@@ -27,9 +27,7 @@ function readVersion(): string {
 
 function shortSha(): string {
   try {
-    // windowsHide: see api/doctor/route.ts — a stale inherited console kills
-    // every child with 0xC0000142 on Windows; never inherit one.
-    return execSync("git rev-parse --short HEAD", { cwd: process.cwd(), stdio: ["ignore", "pipe", "ignore"], windowsHide: true }).toString().trim();
+    return execSync("git rev-parse --short HEAD", { cwd: process.cwd(), stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
   } catch {
     return "";
   }

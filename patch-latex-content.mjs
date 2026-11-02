@@ -13,12 +13,11 @@
  *   { "slots": [...], "patches": [...] }
  */
 
-import { readFile, mkdir } from 'fs/promises';
+import { readFile, writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { applyPatches, buildManifest } from './lib/latex-content.mjs';
 import { isMainModule } from './lib/is-main-module.mjs';
-import { replaceUserFile } from './tracker-utils.mjs';
 
 async function main() {
   const args = process.argv.slice(2).filter(a => a !== '--help');
@@ -90,7 +89,7 @@ async function main() {
   if (!existsSync(outDir)) {
     await mkdir(outDir, { recursive: true });
   }
-  replaceUserFile(absOutput, patched);
+  await writeFile(absOutput, patched, 'utf-8');
 
   const report = {
     source: absSource,

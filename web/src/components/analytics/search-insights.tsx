@@ -129,10 +129,7 @@ function Breakdown({ section }: { section: BreakdownSection }) {
         {section.rows.map((row, i) => {
           const label = String(row[section.dimension] ?? "—");
           const total = Number(row.total) || 0;
-          // `Number(null)` is 0, so the absent rate the model sends for a bucket
-          // nothing was submitted from would render as "0%" — the vendor rows'
-          // guard, below.
-          const conv = row.conversionRate == null ? null : Number(row.conversionRate);
+          const conv = Number(row.conversionRate);
           return (
             <div key={`${label}-${i}`} className="flex items-center gap-3">
               <span className="w-32 shrink-0 truncate text-sm text-muted" title={label}>
@@ -143,7 +140,7 @@ function Breakdown({ section }: { section: BreakdownSection }) {
               </div>
               <span className="w-10 shrink-0 text-right text-sm tabular-nums">{total}</span>
               <span className="w-12 shrink-0 text-right text-xs tabular-nums text-faint">
-                {conv !== null && Number.isFinite(conv) ? `${conv}%` : "—"}
+                {Number.isFinite(conv) ? `${conv}%` : "—"}
               </span>
             </div>
           );

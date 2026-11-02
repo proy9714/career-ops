@@ -1,0 +1,12 @@
+## Keyword Coverage
+
+**ATS coverage: 7%** (2/30 keywords present)
+
+_Scanned: cv.md (base CV, before per-role tailoring)._
+
+**Present (2):** PyTorch, Hugging Face
+
+**Missing (28):** open-weight LLMs, post-training, SFT, LoRA, QLoRA, DPO, GRPO, fine-tuning, training data, evals, model behaviour, personalization, character consistency, long conversations, multilingual behaviour, roleplay, conversational AI, uncensored models, NSFW content, moderation system, EverGuard, GPU training, failure analysis, notebooks to production, self-hosted, user-facing product, production shipping, reproducible training
+
+> Diagnostic only. Add a missing keyword **only** if it reflects real experience ΓÇö reformulated from your background, never fabricated.
+

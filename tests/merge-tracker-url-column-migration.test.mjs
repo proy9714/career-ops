@@ -6,7 +6,6 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isolatedBatchStatePath } from './helpers.mjs';
-import { describeSpawn } from './helpers/describe-spawn.mjs';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const MERGE = join(ROOT, 'merge-tracker.mjs');
@@ -140,7 +139,7 @@ test('--backfill-urls rejects a short legacy row before changing the tracker', t
 
   const result = runResult(env);
 
-  assert.equal(result.status, 1, describeSpawn(result));
+  assert.equal(result.status, 1);
   assert.match(result.stderr, /table row 5 has the wrong number of cells/);
   assert.equal(readFileSync(env.tracker, 'utf8'), before);
 });
@@ -154,7 +153,7 @@ test('--backfill-urls rejects a short separator before changing the tracker', t 
 
   const result = runResult(env);
 
-  assert.equal(result.status, 1, describeSpawn(result));
+  assert.equal(result.status, 1);
   assert.match(result.stderr, /table separator row 4 has the wrong number of cells/);
   assert.equal(readFileSync(env.tracker, 'utf8'), before);
 });

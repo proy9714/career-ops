@@ -29,7 +29,7 @@
  *   node rank-pipeline.mjs --self-test         # in-memory suite; spawns no subprocess
  */
 
-import { readFileSync, existsSync, mkdtempSync, rmSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, mkdtempSync, rmSync } from 'fs';
 import { execFileSync } from 'child_process';
 import { tmpdir } from 'os';
 import { dirname, join } from 'path';
@@ -37,11 +37,9 @@ import { fileURLToPath } from 'url';
 import { flagValue, hasFlag, safeIntFlag, validateFlags } from './lib/cli-flags.mjs';
 import { sanitizeMarkdownField } from './scan.mjs';
 import { withPipelineLock } from './pipeline-lock.mjs';
-import { replaceUserFile } from './tracker-utils.mjs';
 import { isMainModule } from './lib/is-main-module.mjs';
 import { getCareerOpsRoot } from './path-resolver.mjs';
 import { readRememberedCli } from './lib/agent-cli.mjs';
-import { resolveCliLaunch } from './lib/agent-launch.mjs';
 
 const CAREER_OPS = dirname(fileURLToPath(import.meta.url));
 const DATA_ROOT = getCareerOpsRoot();
@@ -246,8 +244,7 @@ export function detectCli(candidates = CLI_CANDIDATES, probe = defaultProbe) {
 
 function defaultProbe(bin) {
   try {
-    const launch = resolveCliLaunch(bin, ['--version']);
-    execFileSync(launch.command, launch.args, { stdio: 'ignore', timeout: 3000 });
+    execFileSync(bin, ['--version'], { stdio: 'ignore', timeout: 3000 });
     return true;
   } catch {
     return false;
@@ -316,7 +313,6 @@ function callCli(cli, prompt, model, timeout) {
   if (model) args.push('--model', model);
   // An empty directory gives an agent CLI nothing to read, and keeps it out of
   // the user's CV, reports and tracker.
-  const launch = resolveCliLaunch(cli.bin, args);
   const cwd = mkdtempSync(join(tmpdir(), 'career-ops-rank-'));
   try {
     // Explicit maxBuffer: a verbose response otherwise throws
@@ -324,7 +320,7 @@ function callCli(cli, prompt, model, timeout) {
     // killSignal SIGKILL: execFileSync's default SIGTERM leaves a CLI that
     // traps the signal running until the parent gives up, which blocks later
     // batches and the unranked report.
-    return execFileSync(launch.command, launch.args, {
+    return execFileSync(cli.bin, args, {
       cwd,
       env: { ...process.env, ...cli.env },
       encoding: 'utf-8',
@@ -350,8 +346,6 @@ export function describeCliFailure(err, bin, timeoutMs) {
     return timeoutMs ? `${bin} timed out after ${timeoutMs / 1000} s; raise CAREER_OPS_RANK_TIMEOUT_MS to wait longer` : `${bin} timed out`;
   }
   if (err?.code === 'ENOENT') return `${bin} not found`;
-  // resolveCliLaunch's own message names the shim, never the prompt.
-  if (err?.code === 'ERR_CLI_LAUNCH') return err.message;
   const lines = String(err?.stderr ?? '').replace(ANSI, '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
   const detail = lines.find(l => /error/i.test(l)) ?? lines.at(-1);
   const exit = err?.status != null ? `${bin} exited with code ${err.status}` : `${bin} failed`;
@@ -484,7 +478,7 @@ async function main(args) {
       const current = readFileSync(PIPELINE_PATH, 'utf-8');
       const result = applyAnnotations(current, annotations, original);
       written = result.written;
-      if (written) replaceUserFile(PIPELINE_PATH, result.text);
+      if (written) writeFileSync(PIPELINE_PATH, result.text);
     });
   }
 

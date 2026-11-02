@@ -1,0 +1,261 @@
+%% Priyadarshi Roy — Master Resume (ATS Optimised, 2 pages)
+%% Compile with: pdflatex priyadarshi_roy_resume.tex (run twice)
+%%
+%% ── MASTER RESUME TAILORING GUIDE ────────────────────────────────────────────
+%% AI / GenAI Engineer     : prioritise RAG, Study Advisor, Voice Assistant, GPT Researcher.
+%% Computer Vision Engineer: prioritise Thesis, HandGX, Vision Transformers, Image Retrieval.
+%% NLP Engineer            : prioritise Summarisation, BERT, Transformers, Semantic Search.
+%% General ML Engineer     : prioritise Thesis, Study Advisor, Emotion Classification.
+%%
+%% LENGTH CONTROL — this file is tuned to exactly 2 pages. If you add content, cut in
+%% this order: (1) "Earlier Projects", (2) the two weakest certifications,
+%% (3) the third bullet of each project.
+%%
+%% ATS RULES OBSERVED — keep these if you edit:
+%%   * standard section headings, all caps, one per line
+%%   * no tables, no multi-column layout, no text boxes, no images
+%%   * plain bullet lists only; dates right-aligned as plain text
+%%   * consistent date format: "Mon YYYY -- Mon YYYY" or "YYYY -- YYYY"
+%%   * spell acronyms out once, then abbreviate: e.g. Retrieval-Augmented Generation (RAG)
+%%   * consistent British spelling throughout
+%% ─────────────────────────────────────────────────────────────────────────────
+\documentclass[10pt,a4paper]{article}
+% ── Packages ──────────────────────────────────────────────────────────────────
+\usepackage[a4paper,top=1.25cm,bottom=1.15cm,left=1.5cm,right=1.5cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}      % scalable outline fonts (clean PDF text extraction for ATS)
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{microtype}
+\usepackage{hyperref}
+% ── Styling ───────────────────────────────────────────────────────────────────
+\definecolor{headerblue}{RGB}{31,119,180}
+\definecolor{darkgray}{RGB}{60,60,60}
+\hypersetup{
+    colorlinks  = true,
+    urlcolor    = headerblue,
+    pdftitle    = {Priyadarshi Roy - Machine Learning Engineer},
+    pdfauthor   = {Priyadarshi Roy},
+    pdfsubject  = {Resume},
+    pdfkeywords = {Machine Learning Engineer, NLP, LLM, RAG, Generative AI,
+                   Computer Vision, Python, PyTorch, LangChain, Docker}
+}
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0pt}
+% ── Section heading ───────────────────────────────────────────────────────────
+\renewcommand{\section}[1]{%
+  \par\vspace{7pt}%
+  \noindent{\large\bfseries\color{headerblue}#1}\par\vspace{2pt}%
+  \noindent\hrule\par\vspace{3pt}%
+}
+\setlist[itemize]{
+    leftmargin = *,
+    itemsep    = 1pt,
+    topsep     = 2pt,
+    parsep     = 0pt,
+    label      = \textbullet,
+}
+% ── Macros ────────────────────────────────────────────────────────────────────
+% \entry{Title}{Organisation / Location}{Date}
+\newcommand{\entry}[3]{%
+  \noindent\textbf{#1}\hfill\textit{\small #3}\\[0pt]%
+  {\small\textit{\color{darkgray}#2}}\par\vspace{2pt}%
+}
+% \project{Name}{Technologies}{Date}
+\newcommand{\project}[3]{%
+  \noindent\textbf{#1}\hfill\textit{\small #3}\\[0pt]%
+  {\small\textit{\color{darkgray}Technologies: #2}}\par\vspace{2pt}%
+}
+% \research{Title}{Institution}{Technologies}{Date}
+\newcommand{\research}[4]{%
+  \noindent\textbf{#1}\hfill\textit{\small #4}\\[0pt]%
+  {\small\textit{\color{darkgray}#2}}\\[1pt]%
+  {\small\textit{\color{darkgray}Technologies: #3}}\par\vspace{2pt}%
+}
+% \skill{Category}{Keywords} — plain text, no table, so parsers read it cleanly
+\newcommand{\skill}[2]{%
+  \noindent\textbf{#1:} #2\par\vspace{2pt}%
+}
+% \minorproject{Name}{Date}{Description}{Technologies}
+\newcommand{\minorproject}[4]{%
+  \item \textbf{#1} (#2): #3 \textit{#4}%
+}
+\newcommand{\vsm}{\vspace{5pt}}
+% ══════════════════════════════════════════════════════════════════════════════
+\begin{document}
+% ── Header ────────────────────────────────────────────────────────────────────
+\begin{center}
+{\LARGE\bfseries\color{headerblue} PRIYADARSHI ROY}\\[3pt]
+{\small\color{darkgray} Machine Learning Engineer \enspace|\enspace NLP \enspace|\enspace Generative AI \enspace|\enspace Computer Vision}\\[5pt]
+\small
+(+49) 1521-7847618 \enspace|\enspace
+\href{mailto:proy9714@gmail.com}{proy9714@gmail.com} \enspace|\enspace
+Cölbe, Germany \enspace|\enspace
+\href{https://linkedin.com/in/priyadarshi-roy}{LinkedIn} \enspace|\enspace
+\href{https://github.com/proy9714}{GitHub}
+\end{center}
+\vspace{1pt}
+% ── Summary ───────────────────────────────────────────────────────────────────
+\section{PROFESSIONAL SUMMARY}
+Machine Learning Engineer with 3 years of industry experience designing and deploying AI
+systems across Natural Language Processing, Generative AI, and Computer Vision. Experienced in
+building Large Language Model (LLM) applications, Retrieval-Augmented Generation (RAG)
+pipelines, semantic search systems, and production machine learning services using Python and
+modern deep learning frameworks. Currently a \textbf{MSc Data Science} student at
+\textbf{Philipps-Universität Marburg} (thesis due November 2026),
+\textbf{available to start immediately}.
+% ── Professional Experience ───────────────────────────────────────────────────
+\section{PROFESSIONAL EXPERIENCE}
+\entry{Machine Learning Engineer}
+{Spring and River Pvt.\ Ltd., Kolkata, India}
+{Aug 2021 -- Aug 2024}
+\begin{itemize}
+\item Developed production Natural Language Processing systems for automated document
+understanding, including multi-document summarisation and highlight extraction pipelines that
+replaced manual review of large document collections.
+\item Built enterprise Retrieval-Augmented Generation (RAG) applications using GPT-3.5 Turbo,
+embedding-based retrieval, LangChain, and vector search, enabling employees to query
+organisational knowledge in natural language.
+\item Designed modular LLM orchestration workflows and evaluation pipelines, improving the
+reliability, maintainability, and scalability of Generative AI applications.
+\item Developed and deployed Python REST APIs using Flask to serve machine learning models in
+production, supporting AI-powered features across business applications.
+\item Collaborated with engineering and product teams across the machine learning lifecycle,
+translating business requirements into deployed AI solutions.
+\end{itemize}
+% ── Research Experience ───────────────────────────────────────────────────────
+\section{RESEARCH EXPERIENCE}
+\research
+{Master's Thesis: Computer Vision for Historical Art Analysis}
+{Philipps-Universität Marburg, Germany}
+{PyTorch, Vision Transformers, Vision-Language Models, Human Pose Estimation, Image Retrieval}
+{2026 -- Present}
+\begin{itemize}
+\item Researching Computer Vision foundation models for semantic understanding of human
+figures, interactions, and visual structures in historical artworks.
+\item Developing multimodal pipelines combining human pose estimation, object detection, image
+embeddings, and geometric verification for structured analysis of paintings.
+\item Investigating domain shift and representation learning when transferring vision models
+from natural images to non-photographic artistic media, including scene graph generation and
+knowledge-based retrieval.
+\end{itemize}
+% ── Projects ──────────────────────────────────────────────────────────────────
+\section{PROJECTS}
+\project{Study Advisor (RAG-Based Chatbot)}
+{Python, FastAPI, LangChain, PostgreSQL, pgvector, Vue.js}
+{2025}
+\begin{itemize}
+\item Architected a multi-stage Retrieval-Augmented Generation (RAG) pipeline for academic
+advising, integrating intent classification, query decomposition, Text-to-SQL, semantic
+retrieval, context summarisation, and LLM response generation.
+\item Implemented hybrid retrieval in PostgreSQL using pgvector for semantic search and
+pg\_trgm for fuzzy matching, removing the need for a separate vector database.
+\item Benchmarked Llama 3.1-70B against Gemini 2.5-Flash with the RAGAS framework over 75
+questions; Gemini led on faithfulness (0.65 vs.\ 0.44) and answer correctness (0.57 vs.\ 0.47),
+informing the production model choice.
+\end{itemize}
+\vsm
+\project{NLS Voice Assistant}
+{Python, Faster-Whisper, Ollama, Docker Compose, LLMs, ASR, TTS}
+{2026}
+\begin{itemize}
+\item Developed a task-oriented voice assistant for weather queries and multi-turn calendar
+management, integrating speech recognition, local LLM orchestration, and text-to-speech into a
+containerised Docker Compose pipeline.
+\item Designed a scenario-based evaluation framework measuring Intent Accuracy, Slot Accuracy,
+Temporal Resolution, and Task Completion Rate, achieving 100\% intent accuracy across all
+evaluated scenarios.
+\item Analysed failure modes including speech recognition errors and temporal reasoning
+ambiguity, identifying targeted improvements for production reliability.
+\end{itemize}
+\vsm
+\project{Multi-Label Emotion Classification}
+{Python, PyTorch, Hugging Face Transformers, BERT, Scikit-Learn}
+{2025}
+\begin{itemize}
+\item Developed a multi-label emotion classifier over BERT embeddings (768-dimensional) using a
+Binary Relevance Logistic Regression architecture with balanced class weighting.
+\item Applied MLSMOTE augmentation in embedding space to address severe label imbalance,
+increasing training samples from 2,768 to 4,724 across 28 label combinations.
+\item Achieved a weighted F1-score of 0.81, with best per-class performance on fear (F1 0.85)
+and strong minority-class recall on anger (0.92).
+\end{itemize}
+\vsm
+\noindent\textbf{Earlier Projects}\par\vspace{2pt}
+\begin{itemize}
+\minorproject{Distributed Discovery of Inclusion Dependencies}{2024}
+{Fault-tolerant distributed system for discovering inclusion dependencies in datasets exceeding
+single-node memory, built with the Akka Actor Framework and ported to Apache Spark.}
+{Java, Akka, Apache Spark}
+\minorproject{Comparative Study of ML Models for Text Classification}{2021}
+{Evaluation of classical machine learning and deep learning approaches across multiple
+algorithms and feature representations.}
+{Python, TensorFlow, Keras, NLTK, Scikit-Learn}
+\minorproject{HandGX -- ASL Gesture Recognition}{2019}
+{CNN-based computer vision application for American Sign Language gesture recognition, covering
+image preprocessing, feature extraction, and mobile deployment.}
+{Python, OpenCV, TensorFlow, Keras, Kivy}
+\end{itemize}
+% ── Open Source Contributions ────────────────────────────────────────────────
+\section{OPEN SOURCE CONTRIBUTIONS}
+\entry
+{GPT Researcher (GitHub Contributor)}
+{\href{https://github.com/assafelovic/gpt-researcher}{github.com/assafelovic/gpt-researcher}}
+{2024}
+\begin{itemize}
+\item Contributed feature implementations, bug fixes, and code improvements to GPT Researcher,
+an open-source autonomous research agent built around LLM orchestration and web-based
+information retrieval.
+\item Worked with agentic AI workflows, Retrieval-Augmented Generation components, and
+Python-based LLM tooling in a large open-source codebase, delivering changes through reviewed
+pull requests.
+\end{itemize}
+% ── Technical Skills ──────────────────────────────────────────────────────────
+\section{TECHNICAL SKILLS}
+\skill{Programming}{Python, Java, C++, JavaScript, SQL}
+\skill{Machine Learning}{PyTorch, TensorFlow, Keras, Scikit-Learn, Deep Learning,
+Neural Networks, Model Evaluation, Feature Engineering, Machine Learning Lifecycle}
+\skill{Generative AI}{Large Language Models (LLMs), Retrieval-Augmented Generation (RAG),
+LangChain, Hugging Face Transformers, Prompt Engineering, Semantic Search, RAGAS Evaluation}
+\skill{Computer Vision}{OpenCV, Vision Transformers, Human Pose Estimation, Object Detection,
+Image Retrieval, Multimodal AI}
+\skill{Backend and MLOps}{FastAPI, Flask, REST APIs, Docker, Docker Compose, Git, Linux, Ollama}
+\skill{Data Engineering}{PostgreSQL, pgvector, MongoDB, MySQL, Apache Spark, Pandas,
+Data Processing, Data Pipelines}
+% ── Certifications ───────────────────────────────────────────────────────────
+\section{CERTIFICATIONS}
+\begin{itemize}
+\item LangChain for LLM Application Development -- DeepLearning.AI
+\item LangChain: Chat with Your Data -- DeepLearning.AI
+\item Natural Language Processing with Classification and Vector Spaces -- Coursera
+\item Build Basic Generative Adversarial Networks (GANs) -- Coursera
+\item Python and Computer Vision Bootcamp -- ShapeAI
+\end{itemize}
+% ── Education ────────────────────────────────────────────────────────────────
+\section{EDUCATION}
+\entry
+{Master of Data Science}
+{Philipps-Universität Marburg, Germany}
+{2024 -- Present}
+\vspace{3pt}
+\entry
+{Master of Computer Science}
+{St.\ Xavier's College (Autonomous), Kolkata, India}
+{2019 -- 2021}
+\vspace{3pt}
+\entry
+{Bachelor of Computer Science}
+{St.\ Xavier's College (Autonomous), Kolkata, India}
+{2016 -- 2019}
+% ── Languages ────────────────────────────────────────────────────────────────
+\section{LANGUAGES}
+\begin{itemize}
+\item English (C2)
+\item Bengali (Native)
+\item Hindi (C2)
+\item Japanese (JLPT N3)
+\item German (A2)
+\end{itemize}
+\end{document}

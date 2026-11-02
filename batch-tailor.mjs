@@ -6,7 +6,6 @@ import { flagValue, hasFlag, validateFlags } from './lib/cli-flags.mjs';
 import { spawnSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import { getCareerOpsRoot } from './path-resolver.mjs';
-import { resolveCliLaunch } from './lib/agent-launch.mjs';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 // CAREER_OPS_BATCH_STATE overrides the batch-state.tsv path — the same override
@@ -137,15 +136,7 @@ for (let i = 0; i < toProcess.length; i++) {
     prompt
   ];
   
-  // On Windows an npm-installed claude is only a .cmd shim, which spawnSync
-  // cannot run without a shell (lib/agent-launch.mjs). Elsewhere this is 'claude'.
-  let res;
-  try {
-    const launch = resolveCliLaunch('claude', claudeArgs);
-    res = spawnSync(launch.command, launch.args, { stdio: 'inherit' });
-  } catch (err) {
-    res = { status: null, error: err };
-  }
+  const res = spawnSync('claude', claudeArgs, { stdio: 'inherit' });
   if (res.error) {
     console.error(`Error running claude: ${res.error.message}`);
     process.exitCode = 1;

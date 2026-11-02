@@ -1,7 +1,6 @@
 import { execFile } from "node:child_process";
 import fs from "node:fs";
-import { rootScript } from "@/lib/career-ops";
-import { resolveCodeRoot } from "@/lib/core/code-root.mjs";
+import { careerOpsRoot, rootScript } from "@/lib/career-ops";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,12 +24,10 @@ export async function GET(req: Request) {
   if (!fs.existsSync(script)) return Response.json({ available: false, reason: "no-script", card: null });
 
   const stdout = await new Promise<string>((resolve) => {
-    // process.execPath + windowsHide: see api/doctor/route.ts — a stale inherited
-    // console kills every child with 0xC0000142 on Windows; never inherit one.
     execFile(
-      process.execPath,
+      "node",
       [script, "--company", company],
-      { cwd: resolveCodeRoot(process.cwd(), process.env), timeout: 20_000, maxBuffer: 8 << 20, windowsHide: true },
+      { cwd: careerOpsRoot(), timeout: 20_000, maxBuffer: 8 << 20 },
       // stdout regardless of exit status: the script reports a missing source
       // inside its payload rather than by failing, and that payload is what the
       // card needs in order to say "not checked" instead of "nothing found".

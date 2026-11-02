@@ -14,7 +14,6 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describeSpawn } from './helpers/describe-spawn.mjs';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const HEADER = '# Applications Tracker\n\n| # | Date | Company | Role | Score | Status | PDF | Report | Notes |\n|---|------|---------|------|-------|--------|-----|--------|-------|\n';
@@ -36,7 +35,7 @@ test('a tab-layout tracker normalizes in place and keeps its layout', () => {
       timeout: 60_000,
       env: { ...process.env, CAREER_OPS_ROOT: dataRoot, CAREER_OPS_TRACKER: '' },
     });
-    assert.equal(r.status, 0, describeSpawn(r, `normalize-statuses exited ${r.status}\n\n`));
+    assert.equal(r.status, 0, `normalize-statuses exited ${r.status}\n${r.stdout}\n${r.stderr}`);
 
     const out = readFileSync(apps, 'utf-8');
     const outTab = out.split('\n').find((l) => l.includes('TabCo'));

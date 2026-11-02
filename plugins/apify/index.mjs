@@ -30,7 +30,6 @@ import { createHash } from 'crypto';
 import { join } from 'path';
 import * as yaml from 'js-yaml';
 import { hasToken, runActor } from './_apify.mjs';
-import { localToday } from '../../lib/local-today.mjs';
 
 const JDS_DIR = 'jds';
 const MIN_JD_BODY_CHARS = 50;
@@ -131,8 +130,7 @@ function saveJd(normalized, descriptionBody, sourceLabel, root) {
     const filepath = join(jdsDir, filename);
     relPath = `${JDS_DIR}/${filename}`;
     if (existsSync(filepath)) return relPath;
-    // The local day, like every other date the repo stamps (lib/local-today.mjs).
-    const today = localToday();
+    const today = new Date().toISOString().slice(0, 10);
     const frontmatter = yaml.dump({
       title: normalized.title,
       company: normalized.company,

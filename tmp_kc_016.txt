@@ -1,0 +1,14 @@
+## Keyword Coverage
+
+**ATS coverage: 13%** (4/30 keywords present)
+
+_Scanned: cv.md (base CV, before per-role tailoring)._
+
+**Present (4):** pose estimation, geometric verification, PyTorch, domain shift
+
+**Thin ΓÇö mentioned once, consider reinforcing (2):** geometric verification, domain shift
+
+**Missing (26):** synthetic data, world models, GAIA, video diffusion, flow matching, post-training, distillation, ablation studies, pose transfer, multi-camera rigs, intrinsics, extrinsics, reprojection, GPU training, multi-GPU jobs, workflow orchestration, behaviour cloning, reward models, novel-view synthesis, evaluation suites, valid-generation rate, embodiment transfer, OEM bring-up, data mixtures, KV cache, closed-loop tests
+
+> Diagnostic only. Add a missing keyword **only** if it reflects real experience ΓÇö reformulated from your background, never fabricated.
+

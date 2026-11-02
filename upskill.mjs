@@ -26,7 +26,6 @@ import { readFileSync, existsSync, statSync, realpathSync, writeFileSync, symlin
 import { join, dirname, relative, resolve, sep } from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { loadYaml } from './lib/yaml-document.mjs';
-import { machineSummarySection } from './lib/machine-summary-section.mjs';
 import { resolveColumns, parseTrackerRow, firstLinkTarget } from './tracker-parse.mjs';
 import { validateFlags, flagValue, hasFlag } from './lib/cli-flags.mjs';
 import { loadCanonicalStates, resolveCanonicalStateId } from './tracker-utils.mjs';
@@ -266,7 +265,7 @@ export function readOptionalText(filePath) {
 // --- Machine Summary + Gap table parsing ---
 // Mirrors analyze-patterns.mjs (duplicated by design, see header comment).
 function parseMachineSummary(content) {
-  const fenceMatch = machineSummarySection(content).match(/^##\s*Machine Summary\s*\n+```(?:yaml|yml|json)?\s*\n([\s\S]*?)\n```/i);
+  const fenceMatch = content.match(/##\s*Machine Summary\s*\n+```(?:yaml|yml|json)?\s*\n([\s\S]*?)\n```/i);
   if (!fenceMatch) return null;
   const raw = fenceMatch[1].trim();
   if (!raw) return null;

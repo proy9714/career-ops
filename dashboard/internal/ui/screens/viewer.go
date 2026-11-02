@@ -62,13 +62,10 @@ func NewViewerModel(t theme.Theme, careerOpsPath, path, title string, width, hei
 	if len(content) > 0 {
 		lines = strings.Split(string(content), "\n")
 	}
-	for i, line := range lines {
-		lines[i] = data.SanitizeTerminalText(line)
-	}
 
 	m := ViewerModel{
 		lines:           lines,
-		title:           data.SanitizeTerminalText(title),
+		title:           title,
 		width:           width,
 		height:          height,
 		theme:           t,
@@ -278,6 +275,7 @@ func (m ViewerModel) renderHeader() string {
 		Bold(true).
 		Foreground(m.theme.Text).
 		Background(m.theme.Surface).
+		Width(m.width).
 		Padding(0, 2)
 
 	title := lipgloss.NewStyle().Bold(true).Foreground(m.theme.Blue).Render(m.title)
@@ -304,7 +302,12 @@ func (m ViewerModel) renderHeader() string {
 		}()
 	}())
 
-	return oneLine(m.width, style, fitTitleBar(m.width, title, scroll))
+	gap := m.width - lipgloss.Width(m.title) - lipgloss.Width(scroll) - 4
+	if gap < 1 {
+		gap = 1
+	}
+
+	return style.Render(title + strings.Repeat(" ", gap) + scroll)
 }
 
 func (m ViewerModel) renderBody() string {
@@ -859,49 +862,46 @@ func (m ViewerModel) renderFooter() string {
 	style := lipgloss.NewStyle().
 		Foreground(m.theme.Subtext).
 		Background(m.theme.Surface).
+		Width(m.width).
 		Padding(0, 1)
 
-	budget := m.width - 2
-	if budget < 1 {
-		budget = 1
-	}
-
 	if m.flash != "" {
-		return oneLine(m.width, style.Foreground(m.theme.Yellow), fitPlain(budget, sanitizeFlash(m.flash)))
+		return style.Foreground(m.theme.Yellow).Render(sanitizeFlash(m.flash))
 	}
 
 	keyStyle := lipgloss.NewStyle().Bold(true).Foreground(m.theme.Text)
 	descStyle := lipgloss.NewStyle().Foreground(m.theme.Subtext)
-	piece := func(key, desc string, pin bool) helpPiece {
-		return helpPiece{text: keyStyle.Render(key) + descStyle.Render(desc), pin: pin}
+
+	if m.flash != "" {
+		flashStyle := lipgloss.NewStyle().
+			Foreground(m.theme.Yellow).
+			Background(m.theme.Surface).
+			Width(m.width).
+			Padding(0, 1)
+		return flashStyle.Render(sanitizeFlash(m.flash))
 	}
 
 	if m.statusPicker {
-		return oneLine(m.width, style, joinHelp(budget, []helpPiece{
-			piece("↑/↓/j/k", i18n.Current.HelpNav, false),
-			piece("Enter", i18n.Current.HelpConfirm, false),
-			piece("Esc/q", i18n.Current.HelpCancel, true),
-		}, "", ""))
+		return style.Render(
+			keyStyle.Render("↑/↓/j/k") + descStyle.Render(i18n.Current.HelpNav) +
+				keyStyle.Render("Enter") + descStyle.Render(i18n.Current.HelpConfirm) +
+				keyStyle.Render("Esc/q") + descStyle.Render(i18n.Current.HelpCancel))
 	}
 
-	pieces := []helpPiece{
-		piece("↑↓", i18n.Current.HelpScroll, false),
-		piece("PgUp/Dn", i18n.Current.HelpPage, false),
-		piece("g/G", i18n.Current.HelpTopEnd, false),
-		piece("c", i18n.Current.HelpChange, false),
-	}
-	if hint := m.openURLHint(keyStyle, descStyle); hint != "" {
-		pieces = append(pieces, helpPiece{text: hint})
-	}
-	pieces = append(pieces,
-		piece("t", i18n.Current.HelpLanguage, false),
-		piece("Esc", i18n.Current.HelpBack, true),
-	)
+	// Render standard footer shortcuts
+	footer := keyStyle.Render("↑↓") + descStyle.Render(i18n.Current.HelpScroll) + // nav
+		keyStyle.Render("PgUp/Dn") + descStyle.Render(i18n.Current.HelpPage) + // pagination
+		keyStyle.Render("g/G") + descStyle.Render(i18n.Current.HelpTopEnd) + // top/bottom
+		keyStyle.Render("c") + descStyle.Render(i18n.Current.HelpChange) + // status
+		m.openURLHint(keyStyle, descStyle) + // job posting
+		keyStyle.Render("t") + descStyle.Render(i18n.Current.HelpLanguage) + // language
+		keyStyle.Render("Esc") + descStyle.Render(i18n.Current.HelpBack) // exit
+
 	if m.coverLetterPath != "" {
-		pieces = append(pieces, helpPiece{text: "  " + keyStyle.Render("L") + descStyle.Render(" cover letter")})
+		footer += "  " + keyStyle.Render("L") + descStyle.Render(" cover letter")
 	}
 
-	return oneLine(m.width, style, joinHelp(budget, pieces, "", ""))
+	return style.Render(footer)
 }
 
 // openURLHint shows the `o` shortcut only when the report has a posting URL.

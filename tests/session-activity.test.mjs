@@ -19,7 +19,6 @@ import { spawnSync } from 'node:child_process';
 import {
   checkActivity, claimActivity, releaseActivity, gcStaleActivity, describeActiveOwner,
 } from '../session-activity.mjs';
-import { describeSpawn } from './helpers/describe-spawn.mjs';
 
 // Every test gets its own scratch dir passed as `activityDir`, so nothing here
 // ever touches the real repo's .career-ops-locks/.
@@ -34,7 +33,7 @@ function sentinelPathFor(activityDir, key) {
 
 function exitedProcessPid() {
   const child = spawnSync(process.execPath, ['-e', '']);
-  assert.equal(child.status, 0, describeSpawn(child));
+  assert.equal(child.status, 0);
   assert.ok(Number.isSafeInteger(child.pid) && child.pid > 0);
   return child.pid;
 }

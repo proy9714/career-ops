@@ -1,13 +1,11 @@
 "use client";
 
 import { use } from "react";
+import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { ArrowLeft, Loader2, Wrench, CircleDot, Check, X } from "lucide-react";
-import { useSearchParams } from "next/navigation";
 import { useJobs } from "@/components/jobs/job-store";
-import { BackLink } from "@/components/back-link";
-import { pipelineQuery } from "@/lib/pipeline-navigation.mjs";
 import { HeroGlow } from "@/components/hero-glow";
 import { Badge } from "@/components/ui/badge";
 
@@ -15,15 +13,13 @@ export default function JobPage({ params }: { params: Promise<{ id: string }> })
   const { id } = use(params);
   const { jobs } = useJobs();
   const job = jobs.find((j) => j.id === id);
-  const query = pipelineQuery(useSearchParams().toString());
-  const pipelineHref = `/pipeline${query ? `?${query}` : ""}`;
 
   if (!job) {
     return (
       <div className="mx-auto max-w-3xl px-6 py-10">
-        <BackLink href={pipelineHref} className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-brand-text">
+        <Link href="/pipeline" className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-brand">
           <ArrowLeft className="size-4" /> Pipeline
-        </BackLink>
+        </Link>
         <p className="mt-8 text-sm text-muted">
           This worker is no longer in memory (it finished earlier or the page was reloaded).
         </p>
@@ -33,16 +29,16 @@ export default function JobPage({ params }: { params: Promise<{ id: string }> })
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-8">
-      <BackLink href={pipelineHref} className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-brand-text">
+      <Link href="/pipeline" className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-brand">
         <ArrowLeft className="size-4" /> Pipeline
-      </BackLink>
+      </Link>
 
       <section className="dot-bg relative mt-5 overflow-hidden rounded-2xl border border-border bg-surface/40 px-6 py-7">
         {job.status === "running" && <HeroGlow />}
         <div className="relative z-10">
           <p className="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.18em] text-faint">
             {job.status === "running" ? (
-              <><Loader2 className="size-3 animate-spin text-brand-text" /> working</>
+              <><Loader2 className="size-3 animate-spin text-brand" /> working</>
             ) : job.status === "done" ? (
               <><Check className="size-3 text-emerald-500" /> done</>
             ) : (
@@ -64,7 +60,7 @@ export default function JobPage({ params }: { params: Promise<{ id: string }> })
         {job.steps.map((s, i) => (
           <li key={i} className="flex items-start gap-2.5 text-sm">
             {s.kind === "tool" ? (
-              <Wrench className="mt-0.5 size-3.5 shrink-0 text-brand-text" />
+              <Wrench className="mt-0.5 size-3.5 shrink-0 text-brand" />
             ) : (
               <CircleDot className="mt-0.5 size-3.5 shrink-0 text-faint" />
             )}
@@ -75,7 +71,7 @@ export default function JobPage({ params }: { params: Promise<{ id: string }> })
         ))}
         {job.status === "running" && (
           <li className="flex items-center gap-2.5 text-sm text-muted">
-            <Loader2 className="size-3.5 animate-spin text-brand-text" /> thinking…
+            <Loader2 className="size-3.5 animate-spin text-brand" /> thinking…
           </li>
         )}
       </ol>

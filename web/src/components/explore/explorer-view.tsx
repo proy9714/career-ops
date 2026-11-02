@@ -5,6 +5,7 @@ import { Compass, ChevronDown, RotateCcw, AlertTriangle, Sparkles, Settings } fr
 import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { instrumentSerif } from "@/lib/fonts";
+import type { Application, InboxJob } from "@/lib/career-ops";
 import { normalizeTextKey } from "@/lib/core/normalize-text-key.mjs";
 import { paramsToFilters, paramsToAi, type ExploreFilters } from "@/lib/explore";
 import { CHINA_PRESET } from "@/lib/employer-preset.mjs";
@@ -31,13 +32,13 @@ const CLI_NAMES: Record<string, string> = {
 
 export function ExplorerView({
   seed,
-  inboxUrls,
-  evaluated,
+  inboxSnapshot,
+  appsSnapshot,
   rootExists,
 }: {
   seed: { filters: ExploreFilters; seededFrom: string[] };
-  inboxUrls: string[];
-  evaluated: { n: string; company: string; role: string }[];
+  inboxSnapshot: InboxJob[];
+  appsSnapshot: Application[];
   rootExists: boolean;
 }) {
   const { filters, setFilters, initFilters, phase, running, offers, discover, loadFresh, status, employerOutcome, error, scannerMissing, mode, setMode, aiIntent, setAiIntent, discoverAI, companiesScanned, companiesAvailable, capHit, droppedNoDate, partial } = useExplore();
@@ -89,20 +90,22 @@ export function ExplorerView({
     }
   }, [seed.filters, initFilters, setMode, setAiIntent, discover, loadFresh]);
 
-  const enriched: EnrichedOffer[] = useMemo(() => {
-    const trackedUrls = new Set(inboxUrls);
-    return offers.map((o) => {
-      const inPipeline = trackedUrls.has(o.url);
-      const c = norm(o.company);
-      const t = norm(o.title);
-      const ev = evaluated.find((a) => {
-        if (norm(a.company) !== c) return false;
-        const ar = norm(a.role);
-        return ar.length > 3 && (t.includes(ar) || ar.includes(t.split(" ").slice(0, 3).join(" ")));
-      });
-      return { ...o, inPipeline, evaluatedN: ev?.n };
-    });
-  }, [offers, inboxUrls, evaluated]);
+  const inboxUrls = useMemo(() => new Set(inboxSnapshot.map((j) => j.url)), [inboxSnapshot]);
+  const enriched: EnrichedOffer[] = useMemo(
+    () =>
+      offers.map((o) => {
+        const inPipeline = inboxUrls.has(o.url);
+        const c = norm(o.company);
+        const t = norm(o.title);
+        const ev = appsSnapshot.find((a) => {
+          if (norm(a.company) !== c) return false;
+          const ar = norm(a.role);
+          return ar.length > 3 && (t.includes(ar) || ar.includes(t.split(" ").slice(0, 3).join(" ")));
+        });
+        return { ...o, inPipeline, evaluatedN: ev?.n };
+      }),
+    [offers, inboxUrls, appsSnapshot],
+  );
 
   const isAi = mode === "ai";
   const isResults = phase === "results";
@@ -124,7 +127,7 @@ export function ExplorerView({
       <header className="mb-6">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2.5">
-            <Compass className="size-6 text-brand-text" />
+            <Compass className="size-6 text-brand" />
             <h1 className={`${instrumentSerif.className} text-3xl text-foreground`}>Explore</h1>
             <span className="rounded-full border border-brand/30 bg-brand-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand-text">New</span>
           </div>
@@ -142,7 +145,7 @@ export function ExplorerView({
       </header>
 
       {!rootExists && (
-        <div className="mb-5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
+        <div className="mb-5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-300">
           Your career-ops home isn’t set up yet — discovery needs a checkout with a profile to seed from.
         </div>
       )}
@@ -178,7 +181,7 @@ export function ExplorerView({
           {isResults && !employer ? (
             <div className="mb-6 rounded-xl border border-border bg-surface/30">
               <button type="button" onClick={() => setRefineOpen((v) => !v)} className="flex w-full items-center gap-2 px-4 py-3 text-sm font-medium text-foreground">
-                <Compass className="size-4 text-brand-text" /> Refine search
+                <Compass className="size-4 text-brand" /> Refine search
                 <ChevronDown className={cn("ml-auto size-4 text-muted transition-transform", refineOpen && "rotate-180")} />
               </button>
               {refineOpen && (
@@ -201,7 +204,7 @@ export function ExplorerView({
             <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
               <Sparkles className="mt-0.5 size-4 shrink-0 text-emerald-500" />
               <p className="text-[13px] leading-relaxed text-foreground">
-                These are live roles that match your CV. <span className="text-emerald-800 dark:text-emerald-400">Nothing here cost you a token.</span> Pick the one you&apos;re most curious about — Evaluate it and I&apos;ll tell you exactly how you score, and why.
+                These are live roles that match your CV. <span className="text-emerald-600 dark:text-emerald-400">Nothing here cost you a token.</span> Pick the one you&apos;re most curious about — Evaluate it and I&apos;ll tell you exactly how you score, and why.
               </p>
             </div>
           )}
@@ -291,13 +294,13 @@ function DiscoverBar({ canDiscover, onDiscover, label, filters }: { canDiscover:
 function EmptyState({ tone, title, body, note, onRerun, rerunLabel }: { tone: "good" | "loose"; title: string; body: string; note?: string; onRerun: () => void; rerunLabel: string }) {
   return (
     <div className="rounded-2xl border border-border bg-surface/30 px-6 py-12 text-center">
-      <div className={cn("mx-auto grid size-12 place-items-center rounded-full", tone === "good" ? "bg-emerald-500/12 text-emerald-500" : "bg-brand-soft text-brand-text")}>
+      <div className={cn("mx-auto grid size-12 place-items-center rounded-full", tone === "good" ? "bg-emerald-500/12 text-emerald-500" : "bg-brand-soft text-brand")}>
         <Sparkles className="size-6" />
       </div>
       <h2 className={`${instrumentSerif.className} mt-4 text-2xl text-foreground`}>{title}</h2>
       <p className="mx-auto mt-1.5 max-w-md text-sm text-muted">{body}</p>
       {note && <p className="mx-auto mt-1 max-w-md text-[12px] text-faint">{note}</p>}
-      <button onClick={onRerun} className="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface/50 px-3.5 py-2 text-sm font-medium text-foreground transition-colors hover:border-brand/40 hover:text-brand-text">
+      <button onClick={onRerun} className="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface/50 px-3.5 py-2 text-sm font-medium text-foreground transition-colors hover:border-brand/40 hover:text-brand">
         <RotateCcw className="size-4" /> {rerunLabel}
       </button>
     </div>
@@ -340,7 +343,7 @@ function DegradedCard({
       <AlertTriangle className="mx-auto size-6 text-amber-500" />
       <p className="mt-2 text-sm font-medium text-foreground">{title}</p>
       <p className="mx-auto mt-1 max-w-md text-[13px] text-muted">{body}</p>
-      <button onClick={onRetry} className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-brand-soft px-3 py-1.5 text-sm font-medium text-brand-text">
+      <button onClick={onRetry} className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-brand-soft px-3 py-1.5 text-sm font-medium text-brand">
         <RotateCcw className="size-4" /> Retry the scan
       </button>
     </div>
@@ -356,7 +359,7 @@ function CappedBanner({ companiesScanned, companiesAvailable, onRefine }: { comp
         Showing a capped slice — searched {companiesScanned.toLocaleString()}
         {companiesAvailable > companiesScanned ? ` of ${companiesAvailable.toLocaleString()}` : ""} companies.
       </span>
-      <button onClick={onRefine} className="font-medium text-brand-text hover:underline">
+      <button onClick={onRefine} className="font-medium text-brand hover:underline">
         Raise scan depth to search deeper
       </button>
     </div>
@@ -374,7 +377,7 @@ function FailedCard({ msg, scannerMissing, onRetry }: { msg: string; scannerMiss
   if (scannerMissing) {
     return (
       <div className="rounded-2xl border border-border bg-surface/30 px-6 py-10 text-center">
-        <div className="mx-auto grid size-12 place-items-center rounded-full bg-brand-soft text-brand-text">
+        <div className="mx-auto grid size-12 place-items-center rounded-full bg-brand-soft text-brand">
           <Compass className="size-6" />
         </div>
         <h2 className={`${instrumentSerif.className} mt-4 text-2xl text-foreground`}>Discovery needs the full toolkit</h2>
@@ -386,7 +389,7 @@ function FailedCard({ msg, scannerMissing, onRetry }: { msg: string; scannerMiss
           <Link href="/pipeline" className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-3.5 py-2 text-sm font-semibold text-brand-foreground transition hover:brightness-110">
             Open pipeline
           </Link>
-          <Link href="/config" className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3.5 py-2 text-sm font-medium text-foreground transition hover:border-brand/40 hover:text-brand-text">
+          <Link href="/config" className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3.5 py-2 text-sm font-medium text-foreground transition hover:border-brand/40 hover:text-brand">
             Open Config
           </Link>
         </div>
@@ -398,7 +401,7 @@ function FailedCard({ msg, scannerMissing, onRetry }: { msg: string; scannerMiss
       <AlertTriangle className="mx-auto size-6 text-amber-500" />
       <p className="mt-2 text-sm font-medium text-foreground">Couldn’t finish the search.</p>
       <p className="mt-1 text-[13px] text-muted">{msg}</p>
-      <button onClick={onRetry} className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-brand-soft px-3 py-1.5 text-sm font-medium text-brand-text">
+      <button onClick={onRetry} className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-brand-soft px-3 py-1.5 text-sm font-medium text-brand">
         <RotateCcw className="size-4" /> Try again
       </button>
     </div>
@@ -408,7 +411,7 @@ function FailedCard({ msg, scannerMissing, onRetry }: { msg: string; scannerMiss
 function BlockedCard() {
   return (
     <div className="rounded-2xl border border-border bg-surface/30 px-6 py-12 text-center">
-      <div className="mx-auto grid size-12 place-items-center rounded-full bg-brand-soft text-brand-text">
+      <div className="mx-auto grid size-12 place-items-center rounded-full bg-brand-soft text-brand">
         <Sparkles className="size-6" />
       </div>
       <h2 className={`${instrumentSerif.className} mt-4 text-2xl text-foreground`}>AI search needs a CLI</h2>

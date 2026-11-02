@@ -6,13 +6,12 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
-import { liveServerSkip } from "../helpers/live-server.mjs";
 
 const url = process.env.LOADING_TRANSITION_TEST_URL;
 const root = process.env.LOADING_TRANSITION_TEST_ROOT;
 
 test("loading transitions keep context and only latest requests settle Today", {
-  skip: liveServerSkip("LOADING_TRANSITION_TEST_URL", "LOADING_TRANSITION_TEST_ROOT"),
+  skip: !url || !root,
   timeout: 120_000,
 }, async (t) => {
   const origin = new URL(url);
@@ -89,7 +88,7 @@ test("loading transitions keep context and only latest requests settle Today", {
 
   await t.test("Follow-ups query transition retains page context", async (subtest) => {
     await page.goto(`${origin.origin}/followups`);
-    await page.locator('tbody[aria-busy="false"]').waitFor();
+    await page.locator("tbody tr").first().waitFor();
     const pending = gate();
     let held = false;
     subtest.after(async () => { pending.release(); await page.unrouteAll({ behavior: "wait" }); });

@@ -4,9 +4,7 @@
 // Zoho Recruit provider — target list: `tracked_companies:` (one Zoho Recruit
 // tenant's career site per entry).
 //
-// Auto-detects any `https://<tenant>.zohorecruit.<tld>` careers_url, where <tld> is
-// one of Zoho's regional data-centre domains (com, ca, eu, in, com.au, jp, sa,
-// com.cn). Only the
+// Auto-detects any `https://<tenant>.zohorecruit.com` careers_url. Only the
 // hostname is used: the board is always read from `/jobs/Careers`, which every
 // tenant with the current career site serves, whatever its own portal name
 // (`Emplois`, …) or the path the configured URL carries (a posting, the bare
@@ -44,8 +42,7 @@ import { fetchTextWithRetry, sleep } from './_http.mjs';
 import { compensationCurrency, parseAnnualCompensation } from './_salary-text.mjs';
 import { safeEncodeURIComponent } from './_safe-url.mjs';
 
-// Closed list of Zoho regional domains; the tenant is captured as group 1.
-export const ZOHO_HOST_RE = /^([a-z0-9][a-z0-9-]*)\.zohorecruit\.(?:com|ca|eu|in|com\.au|jp|sa|com\.cn)$/;
+const ZOHO_HOST_RE = /^[a-z0-9][a-z0-9-]*\.zohorecruit\.com$/;
 const BOARD_PATH = '/jobs/Careers';
 const DETAIL_PACE_MS = 250;
 
@@ -63,7 +60,7 @@ function toEpochMs(value) {
 
 /**
  * Parse an entry's careers_url / api into its Zoho Recruit host, or null for
- * anything that is not an HTTPS `<tenant>.zohorecruit.<known tld>` URL.
+ * anything that is not an HTTPS `<tenant>.zohorecruit.com` URL.
  * @param {any} entry
  * @returns {URL | null}
  */
@@ -324,7 +321,7 @@ export default {
   async fetch(entry, ctx) {
     const board = resolveZohoBoard(entry);
     if (!board) {
-      throw new Error(`zoho-recruit: ${entry?.name || '(unnamed)'} needs an https://<tenant>.zohorecruit.<com|ca|eu|in|com.au|jp|sa|com.cn> careers_url`);
+      throw new Error(`zoho-recruit: ${entry?.name || '(unnamed)'} needs an https://<tenant>.zohorecruit.com careers_url`);
     }
     const html = await fetchTextWithRetry(ctx, board.boardUrl, { redirect: 'error' });
     const rows = pairRecords(extractZohoListRecords(html), board, str(entry?.name));

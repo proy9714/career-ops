@@ -8,7 +8,6 @@ const FIELD_KEYS = {
   legitimacy: "Legitimacy",
   legitimidad: "Legitimacy",
   pdf: "PDF",
-  "evaluation scope": "Evaluation scope",
 };
 
 const DECISION_LABELS = {
@@ -40,13 +39,8 @@ function fieldName(raw) {
   return undefined;
 }
 
-function normalizeNewlines(text) {
-  return String(text ?? "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-}
-
 export function readReport(md) {
-  const normalized = normalizeNewlines(md);
-  const lines = normalized.split("\n");
+  const lines = md.split("\n");
   let cut = lines.findIndex((l, i) => i > 0 && (/^\s*-{3,}\s*$/.test(l) || /^##\s/.test(l)));
   if (cut === -1) cut = Math.min(lines.length, 10);
 
@@ -74,5 +68,5 @@ export function readReport(md) {
     fields.push({ label, value });
   }
 
-  return { title, fields, legitimacy, body: body || normalized };
+  return { title, fields, legitimacy, body: body || md };
 }

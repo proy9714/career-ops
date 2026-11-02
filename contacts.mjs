@@ -213,9 +213,8 @@ export function normalizeForHash(raw) {
 // is non-alphanumeric), so a fully non-ASCII part is just the bare hash. The
 // hash is deterministic, so the UID stays stable across exports.
 export function uidPart(raw) {
-  const normalized = normalizeForHash(raw);
-  const s = slug(normalized);
-  const h = createHash('sha1').update(normalized, 'utf8').digest('hex').slice(0, 8);
+  const s = slug(raw);
+  const h = createHash('sha1').update(normalizeForHash(raw), 'utf8').digest('hex').slice(0, 8);
   return s ? `${s}-${h}` : h;
 }
 

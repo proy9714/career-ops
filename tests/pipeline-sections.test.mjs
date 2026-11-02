@@ -9,7 +9,6 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { appendToPipeline } from '../scan.mjs';
 import { parsePending } from '../sync-batch-input.mjs';
-import { describeSpawn } from './helpers/describe-spawn.mjs';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const DONE = 'https://jobs.example.com/done';
@@ -34,7 +33,7 @@ function reconcile(t, pipelineText) {
     env: { ...process.env, CAREER_OPS_ROOT: root, CAREER_OPS_DATA_DIR: root, CAREER_OPS_TRACKER: '' },
     encoding: 'utf8',
   });
-  assert.equal(result.status, 0, describeSpawn(result));
+  assert.equal(result.status, 0, result.stderr);
   return readFileSync(pipeline, 'utf8');
 }
 

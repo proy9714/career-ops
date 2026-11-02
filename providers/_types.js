@@ -163,9 +163,7 @@
  */
 
 /**
- * Options forwarded to the underlying `fetch` call, plus the body ceiling the
- * capped readers consume themselves (never reaching fetch — undici ignores
- * unknown init keys either way).
+ * Options forwarded to the underlying `fetch` call.
  *
  * @typedef {object} FetchOptions
  * @property {number}                [timeoutMs]
@@ -173,7 +171,6 @@
  * @property {string}                [method]
  * @property {(string|null)}         [body]
  * @property {('error'|'follow'|'manual')} [redirect]
- * @property {number}                [maxBytes] Response-body ceiling for fetchJson/fetchText; defaults to _http.mjs DEFAULT_MAX_BODY_BYTES. Over-cap throws `code: 'response_too_large'`.
  */
 
 /**
@@ -211,13 +208,6 @@
  *                              versions selectively also returns the ranked ones, after
  *                              each posting's default version; scan.mjs then keeps the
  *                              best-ranked version where it keeps one per posting.
- * @property {{get: (key: string) => any, set: (key: string, value: any) => void, delete: (key: string) => void}} [idCache]
- *                              This provider's slice of the store in provider-id-cache.mjs:
- *                              values it resolved on an earlier scan (a board id that only
- *                              a careers-page request reveals), kept between runs. Present
- *                              in scan.mjs and scan-ats-full.mjs runs, absent elsewhere
- *                              (verify-portals, tests), so a provider must work without it.
- *                              Values are stored as JSON.
  */
 
 /**

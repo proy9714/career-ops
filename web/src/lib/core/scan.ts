@@ -3,7 +3,6 @@ import fs from "node:fs";
 import path from "node:path";
 import * as yaml from "js-yaml";
 import { careerOpsRoot, rootScript } from "@/lib/career-ops";
-import { resolveCodeRoot } from "@/lib/core/code-root.mjs";
 import { writeTempPortals, cleanupTempPortals } from "./portals";
 import { profileTargetKeywords } from "@/lib/profile-keywords.mjs";
 import { getProfilePath } from "@/lib/core/profile-path.mjs";
@@ -204,11 +203,8 @@ function runScanner(
     ];
 
     const child = spawn(process.execPath, args, {
-      cwd: resolveCodeRoot(process.cwd(), process.env),
+      cwd: careerOpsRoot(),
       env: { ...process.env, CAREER_OPS_PORTALS: tempPortals },
-      // windowsHide: see api/doctor/route.ts — a stale inherited console kills
-      // every child with 0xC0000142 on Windows; never inherit one.
-      windowsHide: true,
     });
 
     const { offers, seen } = sink;

@@ -85,13 +85,11 @@ test("localToday is imported into the spawned child from lib/local-today.mjs", (
   );
 });
 
-test("localTodayUrl is built the same way scanUrl is: an absolute file:// URL under resolveCodeRoot(process.cwd(), process.env)", () => {
-  // lib/ is a system directory: it lives in the code checkout (where rootScript
-  // finds scan.mjs), not the data root, which holds no lib/ in a split layout.
+test("localTodayUrl is built the same way scanUrl is: an absolute file:// URL under careerOpsRoot()", () => {
   assert.match(
     src,
-    /const localTodayUrl = pathToFileURL\(path\.join\(resolveCodeRoot\(process\.cwd\(\),\s*process\.env\),\s*["']lib["'],\s*["']local-today\.mjs["']\)\)\.href;/,
-    `${SRC}: localTodayUrl must resolve lib/local-today.mjs under resolveCodeRoot(process.cwd(), process.env), so the import ` +
-      `works when the data root is separate from the checkout.`,
+    /const localTodayUrl = pathToFileURL\(path\.join\(careerOpsRoot\(\),\s*["']lib["'],\s*["']local-today\.mjs["']\)\)\.href;/,
+    `${SRC}: localTodayUrl must resolve lib/local-today.mjs under careerOpsRoot(), so the import ` +
+      `works regardless of the checkout the web dashboard is pointed at.`,
   );
 });

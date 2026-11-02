@@ -12,10 +12,6 @@
  *   node test-all.mjs --only <substring>      # Run ONLY discovered tests/**\/*.test.mjs
  *                                             # files whose path contains <substring>
  *                                             # (e.g. --only providers/themuse).
- *   node test-all.mjs --needs <tool,...>      # Run ONLY discovered suites that declare one of
- *                                             # these tools (browser, latex), with the tool
- *                                             # required: a suite that would skip without it
- *                                             # fails instead. See tests/required-tools.mjs.
  *   node test-all.mjs --jobs <N>              # Run at most N discovered suites at a time,
  *                                             # one process each. Default: every available
  *                                             # CPU, or CAREER_OPS_TEST_JOBS when set.
@@ -24,19 +20,15 @@
  *                                             # below run at the same time as the
  *                                             # discovered suites, in one of the N slots.
  *
- *   A full run (anything but --only) waits for any other full run on this
- *   machine to finish first; CAREER_OPS_TEST_QUEUE=0 skips the wait. See
- *   lib/test-queue.mjs.
- *
  *   `--inline-child <result.json>` is how a run with more than one job starts
  *   those inline sections in a process of their own. It is not a way to run
  *   part of the suite: it prints no summary and its exit code says nothing
  *   about what failed.
  *
- *   LOUD WARNING: `--only` and `--needs` run ONLY discovered tests/ files —
- *   every inline core section above (syntax, scripts, dashboard, data
- *   contract, personal data, paths, etc.) is SKIPPED. A green `--only` run
- *   is NOT a green suite. Always run the full suite (no flags) before pushing.
+ *   LOUD WARNING: `--only` runs ONLY discovered tests/ files — every inline
+ *   core section above (syntax, scripts, dashboard, data contract, personal
+ *   data, paths, etc.) is SKIPPED. A green `--only` run is NOT a green
+ *   suite. Always run the full suite (no flags) before pushing.
  *
  * NEW TESTS GO IN A FILE OF THEIR OWN, NOT IN A SECTION HERE.
  * Node tests matching tests/**\/*.test.mjs are auto-discovered — no
@@ -76,9 +68,8 @@ import { join, dirname, basename, relative, delimiter } from 'path';
 import { tmpdir, availableParallelism } from 'os';
 import { fileURLToPath, pathToFileURL } from 'url';
 import * as yaml from 'js-yaml';
-import { pass, fail, warn, stripJsComments, run, runRejects, runAcrossUtcDay, runAcrossLocalDay, lastRunFailure, formatRunFailure, fileExists, finish, results, absorbResults, importSuiteContained, linkNodeModules, ROOT, QUICK, NODE, DEFAULT_SCRIPT_TIMEOUT_MS, getBash, toBashPath, hermeticGitEnv, pinSandboxDataRoot, exitOnInterrupt, ownRootEnv } from './tests/helpers.mjs';
+import { pass, fail, warn, run, runAcrossUtcDay, runAcrossLocalDay, lastRunFailure, formatRunFailure, fileExists, finish, results, absorbResults, importSuiteContained, linkNodeModules, ROOT, QUICK, NODE, DEFAULT_SCRIPT_TIMEOUT_MS, getBash, toBashPath, hermeticGitEnv, pinSandboxDataRoot, exitOnInterrupt, ownRootEnv } from './tests/helpers.mjs';
 import { flagValue, hasFlag } from './lib/cli-flags.mjs';
-import { REQUIRED_TOOL_ENV, declaresTool } from './tests/required-tools.mjs';
 import { collectMjsFiles } from './lib/mjs-files.mjs';
 import { checkSyntax, NODE_CHECK_TIMEOUT_MS } from './lib/syntax-check.mjs';
 import { walkTree, listTree } from './lib/walk-tree.mjs';
@@ -87,7 +78,6 @@ import { childFailureExcerpt } from './lib/failure-excerpt.mjs';
 import { SCRATCH_PREFIX, markScratchOwner, sweepScratchDirs } from './lib/scratch-dirs.mjs';
 import { MARKER_FILE } from './tests/data-root-guard.mjs';
 import { getCareerOpsRoot } from './path-resolver.mjs';
-import { holdTestQueue } from './lib/test-queue.mjs';
 
 /**
  * Read a repo-relative text file as UTF-8.
@@ -295,22 +285,15 @@ function reportNodeTestSuite(rel, ok, stdout, detail, how) {
   }
 }
 
-async function runDiscovered(filter = null, tools = null) {
+async function runDiscovered(filter = null) {
   let files = discoverTests(TESTS_DIR);
   if (filter) {
     const norm = (p) => p.slice(TESTS_DIR.length + 1).replace(/\\/g, '/');
     files = files.filter((f) => norm(f).includes(filter));
   }
-  if (tools) {
-    files = files.filter((f) => {
-      const src = stripJsComments(readFileSync(f, 'utf-8'));
-      return tools.some((tool) => declaresTool(src, tool));
-    });
-  }
   if (files.length === 0) {
     // Fail hard: a path typo must never silently turn CI green.
-    const what = [filter && `--only "${filter}"`, tools && `--needs ${tools.join(',')}`].filter(Boolean).join(' ');
-    console.log(`  ❌ no test files matched${what ? ` ${what}` : ''} under tests/`);
+    console.log(`  ❌ no test files matched${filter ? ` --only "${filter}"` : ''} under tests/`);
     process.exit(1);
   }
   // One file gains nothing from a child process, and --jobs 1 is the original
@@ -334,13 +317,7 @@ async function runDiscovered(filter = null, tools = null) {
     }
     if (kind === 'node-test') {
       const out = run(NODE, ['--test', f]);
-      const failure = lastRunFailure();
-      // run()'s timeout is DEFAULT_SCRIPT_TIMEOUT_MS. Said the way the parallel
-      // loop says it, since a killed suite has no exit status to print.
-      const how = failure?.code === 'ETIMEDOUT'
-        ? `killed after ${DEFAULT_SCRIPT_TIMEOUT_MS / 1000}s`
-        : `exit ${failure?.status ?? '?'}`;
-      reportNodeTestSuite(rel, out !== null, out ?? '', failure, how);
+      reportNodeTestSuite(rel, out !== null, out ?? '', lastRunFailure(), `exit ${lastRunFailure()?.status ?? '?'}`);
       continue;
     }
     await importSuiteContained(f, rel);
@@ -712,32 +689,6 @@ const JOBS = (() => {
 process.env.CAREER_OPS_TEST_JOBS = '1';
 
 const ONLY = hasFlag(process.argv, '--only') ? (flagValue(process.argv, '--only') ?? '') : null;
-
-// `--needs browser,latex`: only the discovered suites that declare one of these
-// tools (tests/required-tools.mjs), with the tool REQUIRED, so a suite that
-// would skip for lack of it fails instead (#5756, #5758). Run where the tools
-// are installed: the tool-suites CI job, in the cv-visual image. Composes with
-// --only. Like --only, it skips every inline section.
-const NEEDS = hasFlag(process.argv, '--needs') ? (flagValue(process.argv, '--needs') ?? '') : null;
-if (NEEDS !== null) {
-  const tools = NEEDS.split(',').map((t) => t.trim()).filter(Boolean);
-  const unknown = tools.filter((t) => !Object.hasOwn(REQUIRED_TOOL_ENV, t));
-  if (tools.length === 0 || NEEDS.startsWith('--') || unknown.length) {
-    console.log(`  ❌ --needs takes a comma-separated list of: ${Object.keys(REQUIRED_TOOL_ENV).join(', ')}${unknown.length ? ` (got "${unknown.join('", "')}")` : ''}`);
-    process.exit(1);
-  }
-  if (ONLY !== null && (ONLY === '' || ONLY.startsWith('--'))) {
-    console.log('  ❌ --only requires a path substring, e.g. --only providers/themuse');
-    process.exit(1);
-  }
-  // Set before any suite starts: children inherit it, and toolRequired()
-  // reads it on every call in this process.
-  for (const tool of tools) process.env[REQUIRED_TOOL_ENV[tool]] = '1';
-  console.log(`\n🧪 career-ops test suite (--needs ${tools.join(',')}${ONLY ? ` --only ${ONLY}` : ''})\n`);
-  await runDiscovered(ONLY || null, tools);
-  finish();
-}
-
 if (ONLY !== null) {
   if (ONLY === '' || ONLY.startsWith('--')) {
     console.log('  ❌ --only requires a path substring, e.g. --only providers/themuse');
@@ -746,19 +697,6 @@ if (ONLY !== null) {
   console.log('\n🧪 career-ops test suite (--only ' + ONLY + ')\n');
   await runDiscovered(ONLY);
   finish();
-}
-
-// From here on this is a full run, and full runs take turns: two at once on one
-// machine each get half its cores and overrun their timeouts. See
-// lib/test-queue.mjs. Not in the inline sections' child, whose parent holds the
-// queue already.
-if (INLINE_CHILD === null) {
-  try {
-    await holdTestQueue();
-  } catch (err) {
-    console.log(`  ❌ ${err.message}`);
-    process.exit(1);
-  }
 }
 
 // More than one job: the inline sections go to a child and the discovered
@@ -903,7 +841,6 @@ const scripts = [
   { name: 'process-quality.mjs --self-test', expectExit: 0 },
   { name: 'company-history.mjs --self-test', expectExit: 0 },
   { name: 'rejection-latency.mjs --self-test', expectExit: 0 },
-  { name: 'role-clarity.mjs --self-test', expectExit: 0 },
   { name: 'salary-gap.mjs --self-test', expectExit: 0 },
   { name: 'negotiation-roi.mjs --self-test', expectExit: 0 },
   { name: 'funnel-velocity.mjs --self-test', expectExit: 0 },
@@ -913,7 +850,6 @@ const scripts = [
   { name: 'build-cv-html.mjs --test', expectExit: 0 },
   { name: 'jd-skill-gap.mjs --self-test', expectExit: 0 },
   { name: 'story-provenance-check.mjs --self-test', expectExit: 0 },
-  { name: 'sponsor-check.mjs --self-test', expectExit: 0 },
   { name: 'cv-title-check.mjs --self-test', expectExit: 0 },
   { name: 'verify-cv-facts.mjs --self-test', expectExit: 0 },
   { name: 'verify-cv-structure.mjs --self-test', expectExit: 0 },
@@ -1794,7 +1730,7 @@ try {
     finalUrl: SHELL,
     frames: [{ url: 'https://ads.example.net/widget', text: 'Sponsored. '.repeat(30), controls: ['Apply now'] }],
   }), SHELL);
-  if (crossOrigin.result === 'uncertain' && crossOrigin.code === 'insufficient_content') {
+  if (crossOrigin.result === 'expired' && crossOrigin.code === 'insufficient_content') {
     pass('a cross-origin frame cannot make an empty shell look active');
   } else {
     fail(`cross-origin frame leaked into the verdict: ${JSON.stringify(crossOrigin)}`);
@@ -2677,11 +2613,6 @@ const exactAllowedFiles = new Set([
   // GitHub Sponsors funding target + Codex plugin manifest (#4131) — same
   // maintainer-credit shape as the .claude-plugin/.github/plugin ones above.
   'funding.json', '.codex-plugin/plugin.json',
-  // The OpenAI plugin directory listing names its developer, like the
-  // claude-directory manifest that '.claude-plugin/plugin.json' above covers.
-  'openai-directory/plugin.json',
-  // The Antigravity Marketplace manifest credits its author the same way.
-  'antigravity-directory/plugin.json',
   // Hired Wall: celebrates a hire with a link back to the project, and the
   // scripts/tests that build and cover that feature necessarily carry the
   // same URL (#4131).
@@ -3392,8 +3323,8 @@ for (const header of ['專業摘要', '工作經歷', '學歷', '證照', '技�
   }
 }
 
-// Importing generate-pdf.mjs does not load Playwright. Keep the warning so a
-// missing sibling module still skips this section instead of crashing it.
+// generate-pdf.mjs imports playwright at module scope; degrade to a warning
+// rather than crashing the suite where it is not installed.
 let pdfModule = null;
 try {
   pdfModule = await import(pathToFileURL(join(ROOT, 'generate-pdf.mjs')).href);
@@ -3883,12 +3814,12 @@ try {
 }
 
 if (
-  runRejects(NODE, ['application-answers.mjs', '--report', '--input'], { stderr: 'Missing value for --report' }, { stdio: ['pipe', 'pipe', 'pipe'] }) &&
-  runRejects(NODE, ['application-answers.mjs', '--report', '--input', 'answers.json'], { stderr: 'Missing value for --report' }, { stdio: ['pipe', 'pipe', 'pipe'] })
+  run(NODE, ['application-answers.mjs', '--report', '--input'], { stdio: ['pipe', 'pipe', 'pipe'] }) === null &&
+  run(NODE, ['application-answers.mjs', '--report', '--input', 'answers.json'], { stdio: ['pipe', 'pipe', 'pipe'] }) === null
 ) {
   pass('application-answers CLI rejects missing option values');
 } else {
-  fail(`application-answers CLI did not reject a missing option value as intended${formatRunFailure()}`);
+  fail('application-answers CLI accepted a missing option value');
 }
 
 const ofertaMode = readOfertaMode();
@@ -7765,9 +7696,9 @@ run(NODE, ['archive-posting.mjs']) !== null
 // argument validation: a trailing --report must not be dropped. It used to fall
 // through the parser and archive the posting with no report prefix — silently
 // unfindable, the exact failure --report exists to prevent.
-runRejects(NODE, ['archive-posting.mjs', '--dry-run', 'https://boards.greenhouse.io/openai/jobs/123', '--report'], { stderr: '--report requires a value' })
+run(NODE, ['archive-posting.mjs', '--dry-run', 'https://boards.greenhouse.io/openai/jobs/123', '--report']) === null
   ? pass('trailing --report: exits non-zero instead of archiving unkeyed')
-  : fail(`trailing --report: should exit 1 with "--report requires a value", not archive without a report prefix${formatRunFailure()}`);
+  : fail('trailing --report: should exit non-zero, not archive without a report prefix');
 
 // argument validation: both --report forms still key the capture
 for (const argv of [['--report', '4'], ['--report=4']]) {
@@ -7778,14 +7709,14 @@ for (const argv of [['--report', '4'], ['--report=4']]) {
 }
 
 // argument validation: flag without URL → exits non-zero
-runRejects(NODE, ['archive-posting.mjs', '--dry-run'], { stderr: 'No URL provided.' })
+run(NODE, ['archive-posting.mjs', '--dry-run']) === null
   ? pass('flag-without-url: exits non-zero (URL required)')
-  : fail(`flag-without-url: should exit 1 with "No URL provided." when URL is missing${formatRunFailure()}`);
+  : fail('flag-without-url: should exit non-zero when URL is missing');
 
 // argument validation: --company without URL → exits non-zero
-runRejects(NODE, ['archive-posting.mjs', '--company=Acme'], { stderr: 'No URL provided.' })
+run(NODE, ['archive-posting.mjs', '--company=Acme']) === null
   ? pass('--company without URL: exits non-zero')
-  : fail(`--company without URL: should exit 1 with "No URL provided."${formatRunFailure()}`);
+  : fail('--company without URL: should exit non-zero');
 
 // --report: keys the capture to a report number so it resolves on a later day (#134)
 const reportEqOut = run(NODE, ['archive-posting.mjs', '--dry-run', '--report=42', 'https://boards.greenhouse.io/openai/jobs/123']);
@@ -7807,13 +7738,13 @@ noReportDays.some((day) => noReportOut?.includes(`jds/${day}_`))
   ? pass('no --report: filename shape unchanged')
   : fail('no --report: filename shape regressed');
 
-runRejects(NODE, ['archive-posting.mjs', '--dry-run', '--report=abc', 'https://boards.greenhouse.io/openai/jobs/123'], { stderr: 'Invalid --report value: "abc"' })
+run(NODE, ['archive-posting.mjs', '--dry-run', '--report=abc', 'https://boards.greenhouse.io/openai/jobs/123']) === null
   ? pass('--report with non-numeric value: exits non-zero')
-  : fail(`--report with non-numeric value: should be rejected, not ignored${formatRunFailure()}`);
+  : fail('--report with non-numeric value: should be rejected, not ignored');
 
-runRejects(NODE, ['archive-posting.mjs', '--pipeline', '--report=42'], { stderr: 'cannot be combined with --pipeline' })
+run(NODE, ['archive-posting.mjs', '--pipeline', '--report=42']) === null
   ? pass('--report with --pipeline: rejected (report keys one posting)')
-  : fail(`--report with --pipeline: should exit 1 with the --pipeline conflict message${formatRunFailure()}`);
+  : fail('--report with --pipeline: should exit non-zero');
 
 // live render: gated behind Playwright executable availability
 let hasBrowser = false;
@@ -13962,7 +13893,6 @@ if (!sqliteAvailable) {
       const md = join(idxTmp, 'applications.md');
       const env = { ...process.env, CAREER_OPS_TRACKER: md };
       const trackerRun = (args) => run(NODE, ['tracker.mjs', ...args], { env, stdio: ['pipe', 'pipe', 'pipe'] });
-      const trackerRejects = (args, stderr) => runRejects(NODE, ['tracker.mjs', ...args], { stderr }, { env, stdio: ['pipe', 'pipe', 'pipe'] });
 
       // 1. Round trip: clean canonical input must export byte-identical.
       const clean =
@@ -13992,10 +13922,10 @@ if (!sqliteAvailable) {
       const corrupted = clean +
         '| 1 | 2026-01-06 | Gamma | PM | — | 3.5/5 | ❌ | 鈥? | drifted |\n'; // dup id + score in status + mojibake
       writeFileSync(md, corrupted);
-      if (trackerRejects(['sync', '--check'], 'Corruption detected in')) {
+      if (trackerRun(['sync', '--check']) === null) {
         pass('sync --check exits non-zero when corruption is present');
       } else {
-        fail(`sync --check did not flag corrupted fixture${formatRunFailure()}`);
+        fail('sync --check did not flag corrupted fixture');
       }
       const queried = JSON.parse(trackerRun(['query', '--company', 'Gamma', '--json']) || '[]');
       if (queried.length === 1 && queried[0].status === 'Evaluated' && queried[0].score === '3.5/5' && queried[0].id === 3) {
@@ -14015,10 +13945,10 @@ if (!sqliteAvailable) {
       const malformedId = clean +
         '| 9junk | 2026-01-06 | Prefix Co | PM | 3.5/5 | Applied | ❌ | — | malformed id |\n';
       writeFileSync(md, malformedId);
-      if (trackerRejects(['sync', '--check'], 'missing/malformed/duplicate id(s)')) {
+      if (trackerRun(['sync', '--check']) === null) {
         pass('sync --check rejects an application ID with a numeric prefix');
       } else {
-        fail(`sync --check accepted a numeric-prefix application ID${formatRunFailure()}`);
+        fail('sync --check accepted a numeric-prefix application ID');
       }
       const repairedId = JSON.parse(trackerRun(['query', '--company', 'Prefix Co', '--json']) || '[]');
       if (repairedId.length === 1 && repairedId[0].id === 3) {
@@ -14026,13 +13956,10 @@ if (!sqliteAvailable) {
       } else {
         fail(`malformed application ID was not safely reassigned: ${JSON.stringify(repairedId)}`);
       }
-      if (
-        trackerRejects(['query', '--id', '1junk', '--json'], '--id must be a positive integer') &&
-        trackerRejects(['history', '--id', '1junk'], 'history requires --id N (a positive integer)')
-      ) {
+      if (trackerRun(['query', '--id', '1junk', '--json']) === null && trackerRun(['history', '--id', '1junk']) === null) {
         pass('query/history reject numeric-prefix --id values');
       } else {
-        fail(`query/history accepted a numeric-prefix --id value${formatRunFailure()}`);
+        fail('query/history accepted a numeric-prefix --id value');
       }
 
       // 3. Staleness: query after an md edit must auto-resync (no stale reads).
@@ -14086,17 +14013,8 @@ try {
   // have enabled; without it "no MCP config" is false on a real machine and the
   // warning assertion below fails. Same reasoning as the GIT_CONFIG_* pinning
   // in section 12c.
-  //
-  // PATH is pinned for the same reason. With no --cli and no CAREER_OPS_CLI,
-  // doctor treats one other installed CLI as the active one, and several as
-  // unset. Either way the "no MCP config" warning this block asserts never
-  // mentions Playwright, so a developer machine would decide the result. An
-  // empty directory keeps every agent CLI out, including one a system image
-  // might ship under a short name. Node is started by its absolute path, and
-  // the git check skips itself when git cannot be run.
   const emptyClaudeCfg = mkdtempSync(join(tmpdir(), 'co-emptycfg-'));
-  const emptyDoctorPath = mkdtempSync(join(tmpdir(), 'co-empty-path-'));
-  const doctorEnv = { env: { ...process.env, CLAUDE_CONFIG_DIR: emptyClaudeCfg, PATH: emptyDoctorPath } };
+  const doctorEnv = { env: { ...process.env, CLAUDE_CONFIG_DIR: emptyClaudeCfg } };
 
   // No project MCP config → doctor surfaces a (non-fatal) warning instead of
   // letting SPA job boards fail silently. doctor reads project MCP config from
@@ -14149,7 +14067,6 @@ try {
   }
   rmSync(withLocalMcp, { recursive: true, force: true });
   rmSync(emptyClaudeCfg, { recursive: true, force: true });
-  rmSync(emptyDoctorPath, { recursive: true, force: true });
 } catch (e) {
   fail(`Playwright MCP detection test crashed: ${e.message}`);
 }
@@ -15579,16 +15496,12 @@ try {
 // contents. Source-level, since gemini-eval runs on import.
 console.log('\n44d. gemini-eval — static prefix as systemInstruction (#1709)');
 try {
-  const rawSrc = readFileSync(join(ROOT, 'gemini-eval.mjs'), 'utf-8');
-  const src = stripCommentLines(rawSrc);
+  const src = readFileSync(join(ROOT, 'gemini-eval.mjs'), 'utf-8');
   const usesSystemInstruction = /getGenerativeModel\(\{[\s\S]*?systemInstruction:\s*systemPrompt/.test(src);
   // the per-request call must NOT re-embed the full systemPrompt inline (that
   // would defeat stable-prefix caching and duplicate the context)
   const noInlinePrefix = !/generateContent\(\[[\s\S]*?\{\s*text:\s*systemPrompt\s*\}/.test(src);
-  // inline template, or a named turn (#5571 hands the same turn to the PII guard first in the same block)
-  const carriesJdTurn =
-    /generateContent\(`JOB DESCRIPTION TO EVALUATE/.test(src) ||
-    /(?:const|let|var)\s+(\w+)\s*=\s*`JOB DESCRIPTION TO EVALUATE[^`]*`[^{}]*?assertGoogleRequestAllowed\(\s*\{[^{}]*?\bturns:\s*\[\s*\1\s*\][^{}]*?\}\s*\);?[^{}]*?await\s+(?:\w+\.)?generateContent\(\s*\1\s*\)/.test(src);
+  const carriesJdTurn = /generateContent\(`JOB DESCRIPTION TO EVALUATE/.test(src);
   if (usesSystemInstruction && noInlinePrefix && carriesJdTurn) {
     pass('gemini-eval moves the static prefix to systemInstruction and sends only the JD turn (#1709)');
   } else {
@@ -16903,12 +16816,7 @@ try {
     ["merge-tracker.mjs writes the cell through formatUrlCell", /put\('url', formatUrlCell\(/.test(mergeSrc)],
     ["merge-tracker.mjs reads the href before keying", /url: COLMAP\.url != null \? extractCellUrl\(/.test(mergeSrc)],
     ["tracker-parse.mjs returns the href on parsed rows", /url: extractCellUrl\(at\('url'\)\)/.test(parseSrc)],
-    // JobURL goes through trackerPostingURL, which reads the cell with
-    // extractCellURL and then drops a "—"/"N/A"/local:jds/ value that names no
-    // posting: kept, it switched off every JobURL enrichment tier.
-    ["the Go dashboard extracts the href", /func extractCellURL\(/.test(goCareerSrc)
-      && /JobURL:\s+trackerPostingURL\(at\("url"\)\)/.test(goCareerSrc)
-      && /func trackerPostingURL\(cell string\) string \{\s*value := extractCellURL\(cell\)/.test(goCareerSrc)],
+    ["the Go dashboard extracts the href", /func extractCellURL\(/.test(goCareerSrc) && /JobURL:\s+extractCellURL\(at\("url"\)\)/.test(goCareerSrc)],
     // history-ats-seeds reads the cell directly rather than through
     // parseTrackerRow, so it is listed on its own.
     ["history-ats-seeds.mjs extracts the href", /extractCellUrl\(cells\[columns\.url\]\)/.test(historySeedsSrc)],

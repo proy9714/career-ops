@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import ReactMarkdown from "react-markdown";
@@ -8,11 +8,9 @@ import remarkGfm from "remark-gfm";
 import { Upload, FileText, Loader2, Check, AlertTriangle, Lock, ArrowRight, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { instrumentSerif } from "@/lib/fonts";
-import { cvStreamErrorMessage, parseCvStream, type CvSeed } from "@/lib/cv/quality";
-import { cvReadiness } from "@/lib/cv/readiness.mjs";
+import { cvReadiness, parseCvStream, type CvSeed } from "@/lib/cv/quality";
 import { ingestErrorMessage } from "@/lib/cv/ingest-error.mjs";
 import { DEFAULT_FILTERS, filtersToParams } from "@/lib/explore";
-import { CV_UPLOAD_ACCEPT, cvUploadError } from "@/lib/cv/upload.mjs";
 
 type Phase = "input" | "parsing" | "review" | "saving" | "error";
 
@@ -30,7 +28,7 @@ const STYLE = `
 .co-cvtrace{animation:co-rise .4s ease both}
 `;
 
-export function CvIngest({ onSaved, onSavingChange, variant = "onboarding" }: { onSaved?: (content: string) => void; onSavingChange?: (saving: boolean) => void; variant?: "onboarding" | "editor" }) {
+export function CvIngest({ onSaved }: { onSaved?: () => void }) {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>("input");
   const [paste, setPaste] = useState("");
@@ -39,11 +37,7 @@ export function CvIngest({ onSaved, onSavingChange, variant = "onboarding" }: { 
   const [md, setMd] = useState("");
   const [seed, setSeed] = useState<CvSeed | null>(null);
   const [err, setErr] = useState("");
-  const [saveErr, setSaveErr] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
-  const requestRef = useRef<AbortController | null>(null);
-  useEffect(() => () => requestRef.current?.abort(), []);
-  useEffect(() => { onSavingChange?.(phase === "saving"); }, [phase, onSavingChange]);
 
   const readiness = md ? cvReadiness(md) : null;
 
@@ -52,17 +46,11 @@ export function CvIngest({ onSaved, onSavingChange, variant = "onboarding" }: { 
     setPhase("parsing");
     setTrace("Reading your CV…");
     setErr("");
-    setMd("");
-    setSeed(null);
-    setSaveErr("");
-    const abort = new AbortController();
-    requestRef.current?.abort();
-    requestRef.current = abort;
     try {
-      const r = await fetch("/api/cv/ingest", { ...init, signal: abort.signal });
+      const r = await fetch("/api/cv/ingest", init);
       const failure = await ingestErrorMessage(r);
       if (failure) {
-        setErr(r.status === 404 ? "needs-cli" : failure);
+        setErr(failure);
         setPhase("error");
         return;
       }
@@ -80,19 +68,17 @@ export function CvIngest({ onSaved, onSavingChange, variant = "onboarding" }: { 
         buf += dec.decode(value, { stream: true });
         const parsed = parseCvStream(buf);
         if (parsed.error) {
-          setErr(cvStreamErrorMessage(parsed.error));
+          setErr(parsed.error === "unreadable" ? "I couldn't read text from that file (it may be a scanned image). Paste the text instead." : "Couldn't parse the CV — paste the text instead.");
           setPhase("error");
-          await reader.cancel();
           return;
         }
         if (parsed.trace) setTrace(parsed.trace.split("\n").filter(Boolean).slice(-1)[0] || "Reading your CV…");
         if (parsed.markdown) setMd(parsed.markdown);
         if (parsed.seed) setSeed(parsed.seed);
       }
-      buf += dec.decode();
       const final = parseCvStream(buf);
-      if (final.error || !buf.includes("<<cv:end>>") || !final.markdown.trim()) {
-        setErr("Couldn't finish reading the CV. Try again or paste the text instead.");
+      if (!final.markdown.trim()) {
+        setErr("Couldn't read a CV there — paste the text instead.");
         setPhase("error");
         return;
       }
@@ -100,7 +86,6 @@ export function CvIngest({ onSaved, onSavingChange, variant = "onboarding" }: { 
       setSeed(final.seed);
       setPhase("review");
     } catch (e) {
-      if (abort.signal.aborted) return;
       setErr(e instanceof Error ? e.message : "stream error");
       setPhase("error");
     }
@@ -126,12 +111,6 @@ export function CvIngest({ onSaved, onSavingChange, variant = "onboarding" }: { 
   };
 
   const ingestFile = (file: File) => {
-    const error = cvUploadError(file);
-    if (error) {
-      setErr(error);
-      setPhase("error");
-      return;
-    }
     // .md/.txt/.markdown fast path — plain text, NO CLI needed, instant.
     if (/\.(md|markdown|txt)$/i.test(file.name)) {
       file
@@ -152,15 +131,20 @@ export function CvIngest({ onSaved, onSavingChange, variant = "onboarding" }: { 
         });
       return;
     }
-    // PDF/TeX/Word → the user's CLI converts it. The server can also resolve
-    // the sole installed CLI when no preference has been saved yet.
+    // PDF/other → the user's CLI parses it. Needs a configured CLI.
     const id = cliId();
+    if (!id) {
+      setErr("needs-cli");
+      setPhase("error");
+      return;
+    }
     const form = new FormData();
     form.append("file", file);
-    form.append("cliId", id || "");
+    form.append("cliId", id);
     void runStream({ method: "POST", body: form });
   };
 
+  const [saveErr, setSaveErr] = useState("");
   const save = async () => {
     if (!md.trim()) {
       setSaveErr("Your CV looks empty — paste it again.");
@@ -181,9 +165,7 @@ export function CvIngest({ onSaved, onSavingChange, variant = "onboarding" }: { 
       setPhase("review");
       return;
     }
-    window.dispatchEvent(new CustomEvent("co-cv-saved"));
-    onSaved?.(md);
-    if (variant === "editor") return;
+    onSaved?.();
     // WOW #1 — land in the Explorer with the CV-derived filters in the URL + run=1,
     // so the Explorer auto-fires the FREE scan itself (robust, no push/replaceState race).
     // GENEROUS first scan so it never comes back empty (that would kill the wow): roles
@@ -221,24 +203,20 @@ export function CvIngest({ onSaved, onSavingChange, variant = "onboarding" }: { 
             onKeyDown={(e) => {
               if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && paste.trim()) ingestText(paste.trim());
             }}
-            placeholder="Paste your CV here — or drop a PDF, TeX or Markdown file below. We'll convert it to cv.md."
+            placeholder="Paste your CV here — or drop a PDF / .md file below. Even a rough paste works; we'll clean it up."
             className="h-32 w-full resize-none bg-transparent text-[14px] leading-relaxed outline-none placeholder:text-faint"
           />
           <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-border pt-3">
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface/50 px-3 py-1.5 text-xs font-medium text-foreground transition hover:border-brand/40 hover:text-brand-text max-sm:min-h-[44px] max-sm:px-4"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface/50 px-3 py-1.5 text-xs font-medium text-foreground transition hover:border-brand/40 hover:text-brand max-sm:min-h-[44px] max-sm:px-4"
             >
-              <Upload className="size-3.5" /> Choose file
+              <Upload className="size-3.5" /> Upload PDF / file
             </button>
-            <input ref={fileRef} aria-label="Upload CV file" type="file" accept={CV_UPLOAD_ACCEPT} hidden onChange={(e) => {
-              const file = e.target.files?.[0];
-              e.target.value = "";
-              if (file) ingestFile(file);
-            }} />
+            <input ref={fileRef} type="file" accept=".pdf,.md,.markdown,.txt,.docx" hidden onChange={(e) => e.target.files?.[0] && ingestFile(e.target.files[0])} />
             <span className="inline-flex items-center gap-1 text-[11px] text-faint">
-              <Lock className="size-3" /> Converted with your configured AI CLI.
+              <Lock className="size-3" /> Stays on your machine. Parsed by your own AI.
             </span>
             <button
               type="button"
@@ -252,15 +230,15 @@ export function CvIngest({ onSaved, onSavingChange, variant = "onboarding" }: { 
         </div>
         {phase === "error" &&
           (err === "needs-cli" ? (
-            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-[13px] text-amber-800 dark:text-amber-300">
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-[13px] text-amber-700 dark:text-amber-300">
               <AlertTriangle className="size-3.5 shrink-0" />
-              <span>To convert a PDF, TeX or Word file, connect an AI CLI in Config. Paste or drop .md / .txt to start without one.</span>
-              <Link href="/config" className="ml-auto inline-flex items-center gap-1 rounded-md bg-amber-500/20 px-2.5 py-1 font-medium text-amber-800 transition hover:bg-amber-500/30 dark:text-amber-200">
+              <span>To read a PDF or Word file, connect an AI CLI in Config. Paste or drop .md / .txt to start without one.</span>
+              <Link href="/config" className="ml-auto inline-flex items-center gap-1 rounded-md bg-amber-500/20 px-2.5 py-1 font-medium text-amber-700 transition hover:bg-amber-500/30 dark:text-amber-200">
                 Connect your AI CLI <ArrowRight className="size-3.5" />
               </Link>
             </div>
           ) : (
-            <p role="alert" className="flex items-center gap-1.5 text-[13px] text-amber-800 dark:text-amber-400">
+            <p className="flex items-center gap-1.5 text-[13px] text-amber-600 dark:text-amber-400">
               <AlertTriangle className="size-3.5 shrink-0" /> {err}
             </p>
           ))}
@@ -274,10 +252,12 @@ export function CvIngest({ onSaved, onSavingChange, variant = "onboarding" }: { 
       <div className="rounded-2xl border border-border bg-surface/60 p-6 backdrop-blur-sm">
         <style>{STYLE}</style>
         <div className="flex items-center gap-2.5">
-          <Loader2 className="size-4 animate-spin text-brand-text" />
+          <Loader2 className="size-4 animate-spin text-brand" />
           <span className={`${instrumentSerif.className} text-lg text-foreground`}>{trace || "Reading your CV…"}</span>
         </div>
-        <p role="status" className="mt-3 text-xs text-muted">Converting to Markdown with your configured AI CLI…</p>
+        <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+          <span className="size-1.5 rounded-full bg-emerald-500" /> 0 tokens · $0.00 · local
+        </div>
         {md && <div className="co-cvtrace mt-4 max-h-40 overflow-hidden rounded-lg border border-border bg-surface/40 p-3 text-[11px] text-faint">{md.slice(0, 400)}…</div>}
       </div>
     );
@@ -288,13 +268,13 @@ export function CvIngest({ onSaved, onSavingChange, variant = "onboarding" }: { 
     <div className="rounded-2xl border border-border bg-surface/60 p-4 backdrop-blur-sm md:p-5">
       <style>{STYLE}</style>
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <FileText className="size-4 text-brand-text" />
+        <FileText className="size-4 text-brand" />
         <h3 className={`${instrumentSerif.className} text-lg text-foreground`}>Here&apos;s your CV — review and save</h3>
         {readiness && (
           <span
             className={cn(
               "ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium",
-              readiness.scoreable ? "bg-emerald-500/10 text-emerald-800 dark:text-emerald-400" : "bg-amber-500/10 text-amber-800 dark:text-amber-400",
+              readiness.scoreable ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-amber-500/10 text-amber-600 dark:text-amber-400",
             )}
           >
             {readiness.scoreable ? <Check className="size-3" /> : <AlertTriangle className="size-3" />}
@@ -302,21 +282,19 @@ export function CvIngest({ onSaved, onSavingChange, variant = "onboarding" }: { 
           </span>
         )}
       </div>
-      {readiness?.hint && <p className="mb-2 text-[12px] text-amber-800 dark:text-amber-400">{readiness.hint}</p>}
+      {readiness?.hint && <p className="mb-2 text-[12px] text-amber-600 dark:text-amber-400">{readiness.hint}</p>}
       {saveErr && (
-        <p role="alert" className="mb-2 flex items-center gap-1.5 text-[12px] text-red-500">
+        <p className="mb-2 flex items-center gap-1.5 text-[12px] text-red-500">
           <AlertTriangle className="size-3.5 shrink-0" /> {saveErr}
         </p>
       )}
       <div className="grid gap-3 md:grid-cols-2">
         <textarea
-          aria-label="Imported CV Markdown"
           value={md}
-          disabled={phase === "saving"}
           onChange={(e) => setMd(e.target.value)}
           className="h-72 w-full resize-none rounded-lg border border-border bg-surface/40 p-3 font-mono text-[12px] leading-relaxed outline-none focus:border-brand/40"
         />
-        <div className="prose prose-sm dark:prose-invert h-72 max-w-none [&_p]:whitespace-pre-line overflow-y-auto rounded-lg border border-border bg-surface/40 p-3 text-[13px]">
+        <div className="prose prose-sm dark:prose-invert h-72 max-w-none overflow-y-auto rounded-lg border border-border bg-surface/40 p-3 text-[13px]">
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{md}</ReactMarkdown>
         </div>
       </div>
@@ -328,15 +306,13 @@ export function CvIngest({ onSaved, onSavingChange, variant = "onboarding" }: { 
           className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-2.5 text-sm font-semibold text-brand-foreground shadow-sm transition hover:brightness-110 disabled:opacity-60"
         >
           {phase === "saving" ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
-          {phase === "saving" ? "Saving…" : variant === "editor" ? "Update cv.md" : "Save & find my matches"}
+          Save &amp; find my matches
         </button>
         <button
           type="button"
-          disabled={phase === "saving"}
           onClick={() => {
             setMd("");
             setSeed(null);
-            setSaveErr("");
             setPhase("input");
           }}
           className="inline-flex items-center gap-1.5 text-[13px] text-muted transition hover:text-foreground"
@@ -344,7 +320,7 @@ export function CvIngest({ onSaved, onSavingChange, variant = "onboarding" }: { 
           <RotateCcw className="size-3.5" /> Start over
         </button>
         <span className="ml-auto inline-flex items-center gap-1 text-[11px] text-faint">
-          <Lock className="size-3" /> {variant === "editor" ? "Updates cv.md and backs up the previous version" : "Saved locally to cv.md"}
+          <Lock className="size-3" /> Saved locally to cv.md
         </span>
       </div>
     </div>

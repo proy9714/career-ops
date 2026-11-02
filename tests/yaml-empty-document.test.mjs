@@ -15,7 +15,6 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as yaml from 'js-yaml';
 import { loadYaml } from '../lib/yaml-document.mjs';
-import { describeSpawn } from './helpers/describe-spawn.mjs';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const COMMENT_ONLY = '# Filters for Riverbend Labs\n# title_filter:\n#   positive: []\n';
@@ -57,7 +56,7 @@ test('scan-ats-full sweeps with a comment-only portals.yml', (t) => {
   });
   assert.ifError(result.error);
   assert.doesNotMatch(result.stderr, /expected a document/);
-  assert.equal(result.status, 0, describeSpawn(result));
+  assert.equal(result.status, 0, result.stderr);
 });
 
 test('doctor flags a profile.yml and portals.yml that hold only comments', (t) => {

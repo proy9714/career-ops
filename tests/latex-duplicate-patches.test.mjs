@@ -5,7 +5,6 @@ import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { pass, fail } from './helpers.mjs';
 import { applyPatches, buildManifest } from '../lib/latex-content.mjs';
-import { describeSpawn, exitedNonZero } from './helpers/describe-spawn.mjs';
 
 const sourceText = String.raw`\documentclass{article}
 \newcommand{\resumeSubheading}[4]{}
@@ -41,7 +40,7 @@ for (const destination of ['new', 'existing', 'source']) {
         cwd: new URL('..', import.meta.url), encoding: 'utf8', env: { ...process.env, CAREER_OPS_ROOT: root },
       });
       assert.equal(result.error, undefined);
-      assert.ok(exitedNonZero(result), describeSpawn(result, 'expected a non-zero exit'));
+      assert.notEqual(result.status, 0, result.stdout);
       assert.match(result.stderr, /duplicate patch/i);
       assert.equal(readFileSync(source, 'utf8'), sourceText);
       if (destination === 'new') assert.ok(!existsSync(output));

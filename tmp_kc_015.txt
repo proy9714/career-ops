@@ -1,0 +1,14 @@
+## Keyword Coverage
+
+**ATS coverage: 12%** (3/25 keywords present)
+
+_Scanned: cv.md (base CV, before per-role tailoring)._
+
+**Present (3):** feature engineering, Spark, Docker
+
+**Thin ΓÇö mentioned once, consider reinforcing (1):** feature engineering
+
+**Missing (22):** ML platform, model training, experimentation, monitoring, model serving, feature stores, orchestration frameworks, Metaflow, MLflow, Kubeflow, Tecton, Chronon, Airflow, Flink, Kafka, AWS, Kubernetes, Terraform, self-service platform, data scientists, ML Ops, batch and real-time data processing
+
+> Diagnostic only. Add a missing keyword **only** if it reflects real experience ΓÇö reformulated from your background, never fabricated.
+

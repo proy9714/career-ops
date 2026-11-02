@@ -145,10 +145,7 @@ for (const [label, getTitle] of checked) {
 //   1. The seven files #2818 migrated are named explicitly. That set is
 //      historical and does not move, so a hardcoded list is the right shape:
 //      each MUST still import the shared module, and dropping the import is
-//      itself the failure. jobspresso.mjs's decoding has since moved into
-//      _wp-job-feed.mjs, the WP Job Manager item parser it shares with
-//      wp-job-manager.mjs, so the list names the file that decodes now;
-//      jobspresso.mjs itself falls to the sweep in pass 2.
+//      itself the failure.
 //   2. Every other importer is swept dynamically, so a provider added later
 //      that grows its own copy is caught without anyone updating a list.
 //
@@ -176,7 +173,7 @@ for (const [label, getTitle] of checked) {
   // and so does not match either.
 
   const MIGRATED = [
-    '_wp-job-feed.mjs', 'higheredjobs.mjs', 'nodesk.mjs', 'larajobs.mjs',
+    'jobspresso.mjs', 'higheredjobs.mjs', 'nodesk.mjs', 'larajobs.mjs',
     'personio.mjs', 'teamtailor.mjs', 'weworkremotely.mjs',
   ];
 

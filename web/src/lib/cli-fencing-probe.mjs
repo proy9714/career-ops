@@ -82,10 +82,7 @@ function readCliHelp(binPath, args) {
     const appendBounded = (current, chunk) => (current + chunk.toString()).slice(-HELP_CAPTURE_BYTES);
 
     // NO_COLOR so flag names are matched as written, not around ANSI escapes.
-    // windowsHide: see api/doctor/route.ts — a stale inherited console kills
-    // every child with 0xC0000142 on Windows, and a probe that dies silently
-    // reads as "flag unsupported".
-    const child = spawn(binPath, args, { env: { ...process.env, NO_COLOR: "1" }, windowsHide: true });
+    const child = spawn(binPath, args, { env: { ...process.env, NO_COLOR: "1" } });
     child.stdin?.end();
 
     child.stdout.on("data", (chunk) => {

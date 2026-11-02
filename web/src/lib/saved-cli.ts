@@ -1,7 +1,6 @@
 import { keepIfInstalled, pickSoleInstalled } from "./cli-pick.mjs";
-import { CONFIG_KEY, writeConfig } from "./config-events.mjs";
 
-export { CONFIG_KEY } from "./config-events.mjs";
+export const CONFIG_KEY = "career-ops:config";
 
 export function readSavedCliId(): string | null {
   try {
@@ -17,9 +16,10 @@ export function persistCliId(cliId: string) {
   try {
     const raw = localStorage.getItem(CONFIG_KEY);
     const prev = raw ? JSON.parse(raw) : {};
-    writeConfig(localStorage, typeof window === "undefined" ? null : window, {
-      ...prev, mode: prev.mode || "cli", cliId,
-    });
+    localStorage.setItem(
+      CONFIG_KEY,
+      JSON.stringify({ ...prev, mode: prev.mode || "cli", cliId }),
+    );
   } catch {
     /* quota / private mode */
   }

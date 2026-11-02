@@ -110,7 +110,7 @@ export function NextDateDialog({
                 onClick={() => setDate(plusDays(n))}
                 className={cn(
                   "rounded-md border border-border bg-surface px-2.5 py-1 text-xs font-medium transition-colors hover:bg-surface-hover",
-                  date === plusDays(n) && "border-brand/50 bg-brand-soft text-brand-text",
+                  date === plusDays(n) && "border-brand/50 bg-brand-soft text-brand",
                 )}
               >
                 +{n} days

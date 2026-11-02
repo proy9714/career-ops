@@ -23,7 +23,6 @@ import { getCareerOpsRoot } from './path-resolver.mjs';
 import { localToday } from './lib/local-today.mjs';
 import { isMainModule } from './lib/is-main-module.mjs';
 import { flagValue, validateFlags } from './lib/cli-flags.mjs';
-import { scanHistoryDataLines } from './lib/scan-history-columns.mjs';
 
 const CODE_ROOT = path.dirname(fileURLToPath(import.meta.url));
 const DATA_ROOT = getCareerOpsRoot();
@@ -228,7 +227,7 @@ export function loadContext() {
   const history = new Map();
   const historyCompanies = new Map();
   if (existsSync(SCAN_HISTORY_PATH)) {
-    for (const line of scanHistoryDataLines(readFileSync(SCAN_HISTORY_PATH, 'utf8'))) {
+    for (const line of readFileSync(SCAN_HISTORY_PATH, 'utf8').split('\n').slice(1)) {
       const row = line.split('\t');
       if (!row[0]) continue;
       history.set(normalizeUrlForDedup(row[0]), row);
